@@ -1,0 +1,16 @@
+# Raw Space-Track data is not redistributed
+/Data/
+
+# Private notes and Google Drive shortcuts
+/Meeting Agendas/
+*.gdoc
+
+# Google Drive / OS files
+desktop.ini
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/

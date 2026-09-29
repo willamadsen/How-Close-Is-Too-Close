@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>USA 245 proximity operations — orbital storyboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="ui">
+    <h1>Tracking USA 245</h1>
+    <p class="introText">Follow the observed element changes behind the alleged USA 245–Kosmos cat-and-mouse sequence.</p>
+
+    <section class="panelSection">
+      <div class="storyNav">
+        <button id="prevEncounter" class="storyArrow" title="Previous storyboard moment">‹</button>
+        <div class="storyHeading"><div id="encounterCount" class="momentCount">Story moment —</div><div id="encounterTitle" class="dateDisplay">—</div></div>
+        <button id="nextEncounter" class="storyArrow" title="Next storyboard moment">›</button>
+      </div>
+      <div class="viewSwitch" aria-label="Camera view">
+        <button id="orbitView" class="viewSwitchOption activeViewSwitch">Full Earth</button>
+        <button id="relativeView" class="viewSwitchOption">Relative motion</button>
+      </div>
+    </section>
+
+    <hr>
+
+    <section class="panelSection">
+      <div class="sectionTitle">Separation from USA 245</div>
+      <div class="statsGrid">
+        <div id="rangeBlock" class="statBlock rangeBlock"><div id="rangeStat" class="statNumber">—</div><div id="rangeLabel" class="statLabel">—</div></div>
+        <div class="statBlock"><div id="timeDisplay" class="statNumber small">—</div><div class="statLabel">Animated UTC time</div></div>
+      </div>
+      <canvas id="separationChart" width="300" height="150" aria-label="Separation distance history"></canvas>
+    </section>
+
+    <hr>
+
+    <section class="panelSection">
+      <div class="sectionTitle">Orbital Elements Sources</div>
+      <div id="provenance"></div>
+    </section>
+
+    <section class="playbackSection">
+      <button id="playBtn" class="miniControl" title="Play / pause"><span class="playIcon">▶</span></button>
+      <input id="timelineSlider" type="range" min="0" value="0" step="1">
+    </section>
+  </aside>
+
+  <div id="cameraControls">
+    <button id="zoomInBtn" class="cameraBtn" title="Zoom in">+</button>
+    <button id="zoomOutBtn" class="cameraBtn" title="Zoom out">−</button>
+    <button id="resetBtn" class="cameraBtn" title="Reset view">⌂</button>
+  </div>
+  <div id="brand"><img src="../../assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
+
+  <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/","topojson-client":"./vendor/topojson/topojson-client.js"}}</script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
