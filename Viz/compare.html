@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- WORK IN PROGRESS: this is a working copy that is changing often. Expect unfinished features and breaking changes. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare two satellites</title>
+  <!-- Reuse the original page's styling so both pages look the same -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- The side panel. Everything with an id="..." is something compare.js reads or updates. -->
+  <aside id="ui">
+    <h1>Compare two satellites</h1>
+    <p class="wipNote">Work in progress: this page is a working copy and changes often.</p>
+    <p class="introText">Pick two satellites and a time window. Orbits are computed from the TLE closest in time to each moment.</p>
+
+    <!-- Preset test cases. compare.js creates one button per entry in data/test_cases.json. -->
+    <section class="panelSection">
+      <div class="sectionTitle">Test cases</div>
+      <div id="testCases" class="testCaseList"></div>
+    </section>
+
+    <hr>
+
+    <!-- The two dropdown menus. compare.js fills in the satellite names. -->
+    <section class="panelSection">
+      <div class="pairPicker">
+        <div>
+          <label for="satA"><span class="sourceDot slotA"></span> Satellite A</label>
+          <select id="satA"></select>
+        </div>
+        <div>
+          <label for="satB"><span class="sourceDot slotB"></span> Satellite B</label>
+          <select id="satB"></select>
+        </div>
+      </div>
+      <!-- Date pickers. Their allowed range is set from the TLE data. -->
+      <label class="overlapToggle">
+        <input id="useOverlap" type="checkbox" checked>
+        Only use dates where both satellites have TLEs
+      </label>
+      <div class="pairPicker dateRange">
+        <div>
+          <label for="startTime">Start (UTC)</label>
+          <input id="startTime" type="datetime-local" step="60">
+        </div>
+        <div>
+          <label for="endTime">End (UTC)</label>
+          <input id="endTime" type="datetime-local" step="60">
+        </div>
+      </div>
+      <div id="rangeNote" class="methodNote"></div>
+    </section>
+
+    <hr>
+
+    <section class="panelSection">
+      <div class="sectionTitle">Separation between A and B</div>
+      <div class="statsGrid">
+        <div class="statBlock"><div id="rangeStat" class="statNumber">—</div><div class="statLabel">Distance apart</div></div>
+        <div class="statBlock"><div id="timeDisplay" class="statNumber small">—</div><div class="statLabel">Animated UTC time</div></div>
+      </div>
+      <canvas id="separationChart" width="300" height="150" aria-label="Separation distance over the last two hours"></canvas>
+    </section>
+
+    <hr>
+
+    <!-- Which satellites are being modeled, and which TLE is in use right now -->
+    <section class="panelSection">
+      <div class="sectionTitle">Now modeling</div>
+      <div id="identity"></div>
+    </section>
+
+    <!-- Play button, speed menu and time slider, pinned to the bottom of the panel -->
+    <section class="playbackSection">
+      <button id="playBtn" class="miniControl" title="Play / pause"><span class="playIcon">▶</span></button>
+      <select id="speed" class="speedSelect" title="Playback speed">
+        <option value="60">1 min/s</option>
+        <option value="600" selected>10 min/s</option>
+        <option value="3600">1 hr/s</option>
+        <option value="86400">1 day/s</option>
+      </select>
+      <input id="timelineSlider" type="range" min="0" max="1" value="0" step="60000">
+    </section>
+  </aside>
+
+  <div id="cameraControls">
+    <button id="zoomInBtn" class="cameraBtn" title="Zoom in">+</button>
+    <button id="zoomOutBtn" class="cameraBtn" title="Zoom out">−</button>
+    <button id="resetBtn" class="cameraBtn" title="Reset view">⌂</button>
+  </div>
+  <div id="brand"><img src="assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
+
+  <!-- A few styles only this page needs -->
+  <style>
+    .pairPicker { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .pairPicker label { display:flex; align-items:center; gap:6px; }
+    .wipNote { margin:4px 0 8px; padding:4px 8px; border-radius:6px; background:#fff4d6; color:#7a5a00; font-size:11px; font-weight:650; }
+    .overlapToggle { display:flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:#444; cursor:pointer; }
+    .overlapToggle input { margin:0; }
+    .dateRange { margin-top:6px; grid-template-columns:1fr; gap:6px; }
+    .dateRange > div { display:grid; grid-template-columns:78px 1fr; align-items:center; }
+    .dateRange label { margin:0; }
+    .dateRange input { width:100%; min-width:0; height:32px; padding:0 6px; border:1px solid #ccc; border-radius:8px; color:#444; font:inherit; font-size:12px; }
+    .sourceDot.slotA { background:#eaaa00; }
+    .sourceDot.slotB { background:#7a7a7a; }
+    .testCaseList { display:flex; flex-direction:column; gap:5px; }
+    .testCase { display:flex; justify-content:space-between; align-items:center; padding:7px 9px; border:1px solid #ddd; border-radius:8px; color:#444; background:#fff; font:inherit; font-size:12px; font-weight:650; text-align:left; cursor:pointer; }
+    .testCase:hover { background:#f7f7f7; }
+    .testCase.active { border-color:#555; box-shadow:inset 0 0 0 1px #555; }
+    .testCase small { color:#888; font-weight:600; }
+    .speedSelect { width:auto; height:27px; padding:0 4px; font-size:11px; }
+    .identityCard { padding:8px 0; border-top:1px solid #eee; font-size:11px; line-height:1.4; }
+    .identityCard:first-child { border-top:0; padding-top:0; }
+    .identityMeta { color:#777; font-variant-numeric:tabular-nums; }
+    .tleAge.stale { color:#b00020; font-weight:700; }
+    .tleAge.aging { color:#9b6d00; font-weight:700; }
+    .dataWarning { margin-top:3px; color:#9b6d00; }
+  </style>
+
+  <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->
+  <script src="vendor/satellite/satellite.min.js"></script>
+  <!-- Tell the browser where to find the 3D and map libraries, then load our code -->
+  <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/","topojson-client":"./vendor/topojson/topojson-client.js"}}</script>
+  <script type="module" src="compare.js"></script>
+</body>
+</html>

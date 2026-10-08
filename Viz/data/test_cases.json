@@ -1,0 +1,31 @@
+{
+  "testCases": [
+    {
+      "label": "Kosmos 2542 – USA 245",
+      "kind": "Russia–US",
+      "satA": "39232",
+      "satB": "44797",
+      "start": "2020-01-20T00:00:00Z",
+      "end": "2020-01-30T00:00:00Z",
+      "note": "Late-January 2020 approach; the original storyline models about 99 km on Jan 25."
+    },
+    {
+      "label": "Kosmos 2543 – USA 245",
+      "kind": "Russia–US",
+      "satA": "39232",
+      "satB": "44835",
+      "start": "2019-12-31T00:00:00Z",
+      "end": "2020-01-05T00:00:00Z",
+      "note": "Early-January 2020 approach; the original storyline models about 21 km on Jan 2."
+    },
+    {
+      "label": "Kosmos 2542 – Kosmos 2543",
+      "kind": "Russia–Russia",
+      "satA": "44797",
+      "satB": "44835",
+      "start": "2019-12-06T00:00:00Z",
+      "end": "2019-12-16T00:00:00Z",
+      "note": "Kosmos 2543 separates from Kosmos 2542 on Dec 6, 2019."
+    }
+  ]
+}

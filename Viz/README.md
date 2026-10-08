@@ -52,6 +52,13 @@ pan, zoom, reset, and a configurable recent-history trail:
 
 <http://localhost:8000/visualizations/eci/case-study.html>
 
+## Compare two satellites (work in progress)
+
+`compare.html`, `compare.js`, `data/test_cases.json` and `../Code/build_tle_library.py`
+are working copies that change often. Expect unfinished features and breaking changes.
+The page needs the TLE library in `data/tles/`, which `Code/build_tle_library.py`
+builds from raw TLEs and which is not published in this repository.
+
 ## Interpretation cautions
 
 - Previous/next buttons move through four curated story moments. Play/pause

@@ -14,3 +14,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
+
+# TLE library built from /Data/ by Code/build_tle_library.py (not published until cleared)
+/Viz/data/tles/
