@@ -24,16 +24,22 @@
     <hr>
 
     <!-- Satellite lookup: type any identifier, get the satellite's name -->
-<section class="panelSection">
-  <div class="sectionTitle">Find a satellite</div>
-  <div class="lookupRow">
-    <input id="lookupInput" type="text" placeholder="NORAD number, designator, or name">
-    <button id="lookupBtn" type="button">Look up</button>
-  </div>
-  <div id="lookupResult" class="methodNote"></div>
-</section>
+    <section class="panelSection">
+      <div class="sectionTitle">Find a satellite</div>
+      <div class="lookupRow">
+        <input id="lookupInput" type="text" placeholder="NORAD number, designator, or name">
+        <button id="lookupBtn" type="button">Look up</button>
+      </div>
+      <div id="lookupResult" class="methodNote"></div>
+      <!-- Shown only when the satellite found has TLE history on this site -->
+      <div id="lookupActions" class="lookupRow" hidden>
+        <button id="loadAsA" type="button"><span class="sourceDot slotA"></span> Load as A</button>
+        <button id="loadAsB" type="button"><span class="sourceDot slotB"></span> Load as B</button>
+      </div>
+    </section>
 
-<hr>
+    <hr>
+
     <!-- The two dropdown menus. compare.js fills in the satellite names. -->
     <section class="panelSection">
       <div class="pairPicker">
@@ -129,13 +135,13 @@
     .tleAge.aging { color:#9b6d00; font-weight:700; }
     .dataWarning { margin-top:3px; color:#9b6d00; }
     .lookupRow { display:flex; gap:6px; }
-    .lookupRow { display:flex; gap:6px; }
-.lookupRow input { flex:1; min-width:0; height:32px; padding:0 8px; border:1px solid #ccc; border-radius:8px; font:inherit; font-size:12px; }
-.lookupRow button { height:32px; padding:0 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
-.lookupRow button:hover { background:#f7f7f7; }
-#lookupResult { white-space: pre-line; }
-
-
+    .lookupRow input { flex:1; min-width:0; height:32px; padding:0 8px; border:1px solid #ccc; border-radius:8px; font:inherit; font-size:12px; }
+    .lookupRow button { height:32px; padding:0 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
+    .lookupRow button:hover { background:#f7f7f7; }
+    #lookupResult { white-space: pre-line; }
+    /* .lookupRow sets display:flex, which would override "hidden", so say explicitly that hidden means hidden */
+    #lookupActions[hidden] { display: none; }
+    #lookupActions { margin-top: 6px; }
   </style>
 
   <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->

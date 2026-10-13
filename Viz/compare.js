@@ -47,6 +47,7 @@ const $ = id => document.getElementById(id);
 // ---------------------------------------------------------------------------
 let catalog = [];            // List of satellites from data/tles/index.json
 let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
+let lookupFound = null;      // NORAD number (as used in the TLE library) of the satellite the lookup found, if it has TLEs
 const library = {};          // Loaded TLE histories, keyed by NORAD number
 const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B
 let startMs = 0, endMs = 0;  // The chosen time window
