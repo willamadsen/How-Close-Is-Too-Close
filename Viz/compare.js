@@ -46,6 +46,7 @@ const $ = id => document.getElementById(id);
 // 3. Things that DO change while the page runs ("let" = can be reassigned)
 // ---------------------------------------------------------------------------
 let catalog = [];            // List of satellites from data/tles/index.json
+let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
 const library = {};          // Loaded TLE histories, keyed by NORAD number
 const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B
 let startMs = 0, endMs = 0;  // The chosen time window
@@ -59,6 +60,8 @@ let lastIdentityKey = "";    // Used to avoid rebuilding the "Now modeling" pane
 // 4. Loading TLEs and computing positions
 // ---------------------------------------------------------------------------
 // Download one satellite's TLE history (only the first time it's needed).
+
+
 async function loadSatellite(norad) {
   if (library[norad]) return library[norad];
   const response = await fetch(`data/tles/${norad}.json`);
@@ -578,19 +581,39 @@ function animate(now) {
   renderer.render(scene, camera);
 }
 
+// Load the full satellite catalog for the lookup box. async function can wait for slow things, like downloading a long file 
+async function loadSatcat() { 
+  $("lookupResult").textContent = "Loading satellite catalog…"; 
+  const response = await fetch("data/satcat.json");
+  if (!response.ok) {
+    $("lookupResult").textContent = "Satellite catalog not found. Run:  python Viz/build_satcat_json.py";
+    return;
+  } 
+  satcat = await response.json();
+  $("lookupResult").textContent = `Catalog ready: ${satcat.length.toLocaleString()} objects.`;
+}
+
 // ---------------------------------------------------------------------------
 // 13. Start: load the satellite list and test cases, then show the first test case
 // ---------------------------------------------------------------------------
+loadSatcat();   // no "await": load the catalog in the background so the 3D view doesn't wait for it
 try {
   const indexResponse = await fetch("data/tles/index.json");
   if (!indexResponse.ok) throw new Error("TLE library not found. Run:  python Code/build_tle_library.py");
   catalog = (await indexResponse.json()).satellites;
   fillDropdowns();
 
-  const testCases = (await fetch("data/test_cases.json").then(r => r.json())).testCases;
-  showTestCases(testCases);
-  markActiveTestCase(document.querySelector(".testCase"));
-  await setPair(testCases[0].satA, testCases[0].satB, testCases[0].start, testCases[0].end);
+    // Start with the first two satellites in the list, over their full date range
+  await setPair(catalog[0].norad, catalog[1].norad);
+
+  // Test cases are optional shortcuts: if the file is missing, the page still works
+  try {
+    const testCases = (await fetch("data/test_cases.json").then(r => r.json())).testCases;
+    showTestCases(testCases);
+  } catch (error) {
+    console.warn("No test cases loaded:", error);
+  }
+
 } catch (error) {
   $("rangeNote").textContent = error.message;
   console.error(error);

@@ -23,6 +23,17 @@
 
     <hr>
 
+    <!-- Satellite lookup: type any identifier, get the satellite's name -->
+<section class="panelSection">
+  <div class="sectionTitle">Find a satellite</div>
+  <div class="lookupRow">
+    <input id="lookupInput" type="text" placeholder="NORAD number, designator, or name">
+    <button id="lookupBtn" type="button">Look up</button>
+  </div>
+  <div id="lookupResult" class="methodNote"></div>
+</section>
+
+<hr>
     <!-- The two dropdown menus. compare.js fills in the satellite names. -->
     <section class="panelSection">
       <div class="pairPicker">
@@ -117,6 +128,12 @@
     .tleAge.stale { color:#b00020; font-weight:700; }
     .tleAge.aging { color:#9b6d00; font-weight:700; }
     .dataWarning { margin-top:3px; color:#9b6d00; }
+    .lookupRow { display:flex; gap:6px; }
+    .lookupRow { display:flex; gap:6px; }
+.lookupRow input { flex:1; min-width:0; height:32px; padding:0 8px; border:1px solid #ccc; border-radius:8px; font:inherit; font-size:12px; }
+.lookupRow button { height:32px; padding:0 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
+.lookupRow button:hover { background:#f7f7f7; }
+
   </style>
 
   <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->
