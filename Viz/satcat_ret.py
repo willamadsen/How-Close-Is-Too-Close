@@ -1,15 +1,3 @@
-#print("Yay Im so proud of you willa youre actually doing this thing")
-
-#setting constants 
-##satellite_name = "USA 245"
-#norad_number = 39232
-
-#I can use an fstring inside of a print command to print variables inside of text
-#print(f"{satellite_name} has a NORAD number of {norad_number}.")
-
-
-
-
 #importing libary to communicate with web servers 
 import requests 
 
@@ -37,3 +25,8 @@ if response.status_code == 200:
         print("Download complete! File saved as 'full_satcat.csv'")
 else:
     print(f"Failed to download. Status code: {response.status_code}")
+
+
+
+#now sort for only the columns we want to keep and save as a new file
+
