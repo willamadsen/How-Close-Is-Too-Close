@@ -510,6 +510,47 @@ function markActiveTestCase(activeButton) {
 }
 
 // ---------------------------------------------------------------------------
+// Satellite lookup: find catalog entries matching whatever someone typed
+// ---------------------------------------------------------------------------
+// "19079A" (short form, as written inside a TLE) -> "2019-079A" (the catalog's form)
+function shortToLongIntlDes(short) { //turns  a short int. designator into the long form used in the catalog
+  let year = Number(short.slice(0, 2));
+  year += year < 57 ? 2000 : 1900;     // TLEs started in 1957, so 57-99 are 1900s
+  return `${year}-${short.slice(2, 5)}${short.slice(5)}`;
+}
+
+// Returns a list of matching satellites (an empty list if nothing matches).
+function identify(text) {
+  text = text.trim().toUpperCase();
+  if (text === "") return [];
+
+  // 1. Only digits -> NORAD number. Number() drops leading zeros ("00123" -> 123),
+  //    matching how the catalog stores them.
+  if (/^\d+$/.test(text)) {
+    const norad = String(Number(text));
+    return satcat.filter(s => s.norad === norad);
+  }
+
+  // 2. Long international designator, like 2019-079A
+  if (/^\d{4}-\d{3}[A-Z]{1,3}$/.test(text)) {
+    return satcat.filter(s => s.intlDes === text);
+  }
+
+  // 3. Short international designator, like 19079A
+  if (/^\d{5}[A-Z]{1,3}$/.test(text)) {
+    const longForm = shortToLongIntlDes(text);
+    return satcat.filter(s => s.intlDes === longForm);
+  }
+
+  // 4. Anything else is a name. CelesTrak spells Russian "Kosmos" satellites "COSMOS".
+  const name = text.replace("KOSMOS", "COSMOS");
+  const exact = satcat.filter(s => s.name === name);
+  if (exact.length > 0) return exact;              // exact name match wins
+  return satcat.filter(s => s.name.includes(name)); // otherwise, any name containing it
+}
+
+
+// ---------------------------------------------------------------------------
 // 11. Responding to the user
 // ---------------------------------------------------------------------------
 // When a dropdown changes: if the user picked the same satellite as the other slot,
@@ -529,6 +570,33 @@ $("satB").addEventListener("change", event => {
 $("useOverlap").addEventListener("change", () => applyLimits());
 $("startTime").addEventListener("change", () => setWindow(fromInputValue($("startTime").value), endMs));
 $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue($("endTime").value)));
+
+// Satellite lookup: run when "Look up" is clicked or Enter is pressed in the box.
+function runLookup() {
+  if (satcat.length === 0) {
+    $("lookupResult").textContent = "The satellite catalog is still loading. Try again in a moment.";
+    return;
+  }
+  const matches = identify($("lookupInput").value);
+  const describe = s => `${s.name}  (NORAD ${s.norad}, ${s.intlDes})`;
+
+  if (matches.length === 0) {
+    $("lookupResult").textContent = "No satellite found with that identifier.";
+  } else if (matches.length === 1) {
+    $("lookupResult").textContent = describe(matches[0]);
+  } else {
+    const shown = matches.slice(0, 10);   // show at most 10
+    const header = matches.length > 10
+      ? `${matches.length} matches (showing the first 10):`
+      : `${matches.length} matches:`;
+    $("lookupResult").textContent = [header, ...shown.map(describe)].join("\n");
+  }
+}
+$("lookupBtn").addEventListener("click", runLookup);
+$("lookupInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") runLookup();
+});
+
 
 $("playBtn").addEventListener("click", () => {
   playing = !playing;   // "!" means "not", so this flips true <-> false
