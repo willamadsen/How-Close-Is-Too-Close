@@ -60,21 +60,65 @@ let lastIdentityKey = "";    // Used to avoid rebuilding the "Now modeling" pane
 // ---------------------------------------------------------------------------
 // 4. Loading TLEs and computing positions
 // ---------------------------------------------------------------------------
-// Download one satellite's TLE history (only the first time it's needed).
 
-
+// Load one satellite's TLEs (only the first time it's needed): its full history from our own
+// TLE library if we have it, otherwise its latest TLE live from CelesTrak.
 async function loadSatellite(norad) {
   if (library[norad]) return library[norad];
-  const response = await fetch(`data/tles/${norad}.json`);
-  if (!response.ok) throw new Error(`Could not load TLEs for NORAD ${norad} (HTTP ${response.status})`);
-  const file = await response.json();
+  const libraryInfo = catalog.find(s => s.norad === norad);       // undefined if not in our library
+  const tles = libraryInfo ? await loadLibraryTles(norad) : await loadCurrentTle(norad);
+  const epochsMs = tles.map(t => Date.parse(t.epoch));            // epochs as numbers, for fast searching
   library[norad] = {
-    info: catalog.find(s => s.norad === norad),
-    tles: file.tles,
-    epochsMs: file.tles.map(t => Date.parse(t.epoch)),  // Epochs as numbers, for fast searching
+    info: libraryInfo ?? satcatInfo(norad),
+    tles,
+    epochsMs,
+    // The dates this satellite can be modeled: from its first to last TLE,
+    // or one day either side of its TLE if it only has one (a live TLE)
+    coverage: tles.length > 1 ? [epochsMs[0], epochsMs[epochsMs.length - 1]]
+                              : [epochsMs[0] - DAY_MS, epochsMs[0] + DAY_MS],
     satrecs: [],   // SGP4 set-up for each TLE, filled in the first time each TLE is used
   };
   return library[norad];
+}
+
+// Full TLE history from our own library: data/tles/<NORAD>.json (made by build_tle_library.py)
+async function loadLibraryTles(norad) {
+  const response = await fetch(`data/tles/${norad}.json`);
+  if (!response.ok) throw new Error(`Could not load TLEs for NORAD ${norad} (HTTP ${response.status})`);
+  return (await response.json()).tles;
+}
+
+// The LATEST TLE for any satellite with a public orbit, from CelesTrak's free service.
+// Nothing comes back for objects that have re-entered or whose orbits aren't published.
+// TESTING SETUP: CelesTrak is used while building and testing the tool. For actual use,
+// this function can be swapped for another TLE source (see "Data sources" in README.md).
+async function loadCurrentTle(norad) {
+  let response;
+  try {
+    response = await fetch(`https://celestrak.org/NORAD/elements/gp.php?CATNR=${Number(norad)}&FORMAT=TLE`);
+  } catch {                                              // no answer at all (offline, or CelesTrak unreachable)
+    throw new Error("Couldn't reach CelesTrak for a current TLE. Check your internet connection and try again.");
+  }
+  const lines = (await response.text()).split("\n").map(line => line.trim());
+  const line1 = lines.find(line => line.startsWith("1 "));
+  const line2 = lines.find(line => line.startsWith("2 "));
+  if (!response.ok || !line1 || !line2) {
+    throw new Error(`CelesTrak has no current TLE for NORAD ${Number(norad)}: it may have re-entered, or its orbit isn't public.`);
+  }
+  return [{ epoch: new Date(tleEpochMs(line1)).toISOString(), source: "CelesTrak (latest)", line1, line2 }];
+}
+
+// A TLE's epoch, from columns 19-32 of line 1: a 2-digit year, then the day of the year with a fraction.
+function tleEpochMs(line1) {
+  let year = Number(line1.slice(18, 20));
+  year += year < 57 ? 2000 : 1900;                               // TLEs started in 1957
+  return Date.UTC(year, 0, 1) + (Number(line1.slice(20, 32)) - 1) * DAY_MS;
+}
+
+// Name and designator for a satellite that isn't in our library, from the full catalog.
+function satcatInfo(norad) {
+  const entry = satcat.find(s => Number(s.norad) === Number(norad));
+  return { name: entry?.name ?? `NORAD ${Number(norad)}`, intlDes: entry?.intlDes ?? null, country: null };
 }
 
 // Find the TLE whose epoch is closest to time ms. The epochs are sorted, so we can
@@ -436,20 +480,39 @@ function moveCameraSmoothly() {
 // Unticked (or if the satellites don't overlap at all): from the earliest TLE of either
 // satellite to the most recent TLE of either.
 function dataLimits() {
-  const a = library[pair.A].epochsMs, b = library[pair.B].epochsMs;
+  const a = library[pair.A].coverage, b = library[pair.B].coverage;
   const overlapStart = Math.max(a[0], b[0]), overlapEnd = Math.min(a[a.length - 1], b[b.length - 1]);
   const overlap = overlapStart < overlapEnd;
   if (overlap && $("useOverlap").checked) return { min: overlapStart, max: overlapEnd, overlap, overlapOnly: true };
   return { min: Math.min(a[0], b[0]), max: Math.max(a[a.length - 1], b[b.length - 1]), overlap, overlapOnly: false };
 }
 
-// Pick a pair of satellites. Optionally also a time window (test cases provide one);
-// otherwise the window is set to the full range of data, as the task asks.
+// Pick a pair of satellites. Either can be empty (null or "") while the user is still choosing.
+// Each chosen satellite is loaded straight away (from our library, or live from CelesTrak);
+// once both are loaded, the dates are set and the pair is modeled.
 async function setPair(noradA, noradB, requestedStart = null, requestedEnd = null) {
-  pair.A = noradA; pair.B = noradB;
-  $("satA").value = noradA; $("satB").value = noradB;
+  pair.A = noradA || null; pair.B = noradB || null;      // "" (the Choose… option) becomes null
   $("rangeNote").textContent = "Loading TLEs…";
-  await Promise.all([loadSatellite(noradA), loadSatellite(noradB)]);
+
+  // Load whichever satellites are chosen. allSettled waits for all of them, even if one fails.
+  const chosen = [pair.A, pair.B].filter(norad => norad);
+  const results = await Promise.allSettled(chosen.map(norad => loadSatellite(norad)));
+  const failed = results.find(result => result.status === "rejected");
+  if (!library[pair.A]) pair.A = null;                   // a satellite that failed to load
+  if (!library[pair.B]) pair.B = null;                   // is taken back out of its slot
+
+  // Show the choices in the dropdowns (live satellites get added to them first)
+  if (pair.A) addToDropdowns(pair.A);
+  if (pair.B) addToDropdowns(pair.B);
+  $("satA").value = pair.A ?? ""; $("satB").value = pair.B ?? "";
+
+  if (failed || !pair.A || !pair.B) {                    // nothing to model yet
+    clearScene();
+    $("rangeNote").textContent = failed ? failed.reason.message
+      : (pair.A || pair.B) ? `Now choose satellite ${pair.A ? "B" : "A"}.`
+      : "Search for a satellite or pick one from the dropdowns to begin.";
+    return;
+  }
   applyLimits(requestedStart, requestedEnd);
   lastIdentityKey = "";
   moveCameraSmoothly();
@@ -476,6 +539,21 @@ function applyLimits(requestedStart = null, requestedEnd = null) {
             requestedEnd ? clamp(Date.parse(requestedEnd)) : limits.max);
 }
 
+// Take both satellites off the globe and blank the readouts (used while the pair isn't complete).
+function clearScene() {
+  for (const slot of ["A", "B"]) {
+    dots[slot].visible = false;                          // hide the satellite's dot
+    trails[slot].geometry.dispose();                     // free the old orbit line's memory...
+    trails[slot].geometry = new THREE.BufferGeometry();  // ...and replace it with an empty one
+  }
+  $("rangeStat").textContent = "—";                     // distance
+  $("timeDisplay").textContent = "—";                   // time
+  $("identity").innerHTML = "";                          // "Now modeling" panel
+  lastIdentityKey = "";                                  // make sure the panel rebuilds next time
+  const chart = $("separationChart");
+  chart.getContext("2d").clearRect(0, 0, chart.width, chart.height);   // blank the chart
+}
+
 // Set the start and end of the time window, and jump to the start.
 function setWindow(newStart, newEnd) {
   if (newEnd <= newStart) newEnd = newStart + DAY_MS;   // Never allow an empty window
@@ -487,27 +565,22 @@ function setWindow(newStart, newEnd) {
   updateScene();
 }
 
-// Fill both dropdowns with every satellite in the library, e.g. "USA 245 (39232)".
-function fillDropdowns() {
+// Add a satellite loaded live from CelesTrak to both dropdowns (once), so it can be picked again.
+function addToDropdowns(norad) {
   for (const select of [$("satA"), $("satB")]) {
-    select.innerHTML = catalog.map(s => `<option value="${s.norad}">${s.name} (${s.norad})</option>`).join("");
+    if (![...select.options].some(option => option.value === norad)) {
+      select.add(new Option(`${library[norad].info.name} (${norad}) · live`, norad));
+    }
   }
 }
 
-// One button per test case in data/test_cases.json.
-function showTestCases(testCases) {
-  $("testCases").innerHTML = testCases.map((c, i) =>
-    `<button class="testCase" data-index="${i}" title="${c.note}">${c.label}<small>${c.kind}</small></button>`).join("");
-  for (const button of document.querySelectorAll(".testCase")) {
-    button.addEventListener("click", () => {
-      const c = testCases[Number(button.dataset.index)];
-      markActiveTestCase(button);
-      setPair(c.satA, c.satB, c.start, c.end);
-    });
+// Fill both dropdowns with every satellite in the library, e.g. "USA 245 (39232)",
+// after a blank "Choose a satellite…" option for when nothing is chosen yet.
+function fillDropdowns() {
+  for (const select of [$("satA"), $("satB")]) {
+    select.innerHTML = `<option value="">Choose a satellite…</option>` +
+      catalog.map(s => `<option value="${s.norad}">${s.name} (${s.norad})</option>`).join("");
   }
-}
-function markActiveTestCase(activeButton) {
-  for (const button of document.querySelectorAll(".testCase")) button.classList.toggle("active", button === activeButton);
 }
 
 // ---------------------------------------------------------------------------
@@ -550,7 +623,6 @@ function identify(text) {
   return satcat.filter(s => s.name.includes(name)); // otherwise, any name containing it
 }
 
-
 // ---------------------------------------------------------------------------
 // 11. Responding to the user
 // ---------------------------------------------------------------------------
@@ -558,17 +630,15 @@ function identify(text) {
 // swap them so A and B are always different.
 $("satA").addEventListener("change", event => {
   const a = event.target.value, b = a === pair.B ? pair.A : pair.B; //norad number now comes from event.target.value
-  markActiveTestCase(null);
   setPair(a, b); //writes two selected satellites into sat pair  S
 });
 $("satB").addEventListener("change", event => {
   const b = event.target.value, a = b === pair.A ? pair.B : pair.A;
-  markActiveTestCase(null);
   setPair(a, b);
 });
 
 // Ticking/unticking the overlap checkbox resets the window to the new default range.
-$("useOverlap").addEventListener("change", () => applyLimits());
+$("useOverlap").addEventListener("change", () => { if (pair.A && pair.B) applyLimits(); });
 $("startTime").addEventListener("change", () => setWindow(fromInputValue($("startTime").value), endMs));
 $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue($("endTime").value)));
 
@@ -576,7 +646,7 @@ $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue(
 function runLookup() {
   $("lookupActions").hidden = true;            // tells the html file to hide the Load buttons until we know there's something to load
   lookupFound = null;                          // forget the previous result
-  
+
   if (satcat.length === 0) {
     $("lookupResult").textContent = "The satellite catalog is still loading. Try again in a moment.";
     return;
@@ -586,7 +656,7 @@ function runLookup() {
 
   if (matches.length === 0) {
     $("lookupResult").textContent = "No satellite found with that identifier.";
-} else if (matches.length === 1) {
+  } else if (matches.length === 1) {
     const found = matches[0];
     // Is this satellite in the TLE library (data/tles/index.json)?
     // Compare as numbers: the library pads NORAD numbers to 5 digits ("05398"), the catalog doesn't ("5398")
@@ -596,9 +666,10 @@ function runLookup() {
       lookupFound = inLibrary.norad;           // use the library's spelling, since that's the TLE file's name
       $("lookupActions").hidden = false;       // show the Load buttons
     } else {
-      $("lookupResult").textContent = `${describe(found)}\nNo TLE history for this satellite on this site yet.`;
+      $("lookupResult").textContent = `${describe(found)}\nNo TLE history on this site, but its current orbit can be loaded live from CelesTrak.`;
+      lookupFound = found.norad.padStart(5, "0");   // 5 digits, the same style as the TLE library
+      $("lookupActions").hidden = false;
     }
-
   } else {
     const shown = matches.slice(0, 10);   // show at most 10
     const header = matches.length > 10
@@ -617,17 +688,13 @@ $("lookupInput").addEventListener("keydown", event => {
 $("loadAsA").addEventListener("click", () => { //when the load A button is clicked, run the code inside
   if (!lookupFound) return;                              // nothing found: do nothing
   const a = lookupFound, b = a === pair.B ? pair.A : pair.B;
-  markActiveTestCase(null);                              // un-highlight any test case button
   setPair(a, b);                                         // load TLEs, set the dates, redraw
 });
 $("loadAsB").addEventListener("click", () => {
   if (!lookupFound) return;
   const b = lookupFound, a = b === pair.A ? pair.B : pair.A;
-  markActiveTestCase(null);
   setPair(a, b);
 });
-
-
 
 $("playBtn").addEventListener("click", () => {
   playing = !playing;   // "!" means "not", so this flips true <-> false
@@ -680,20 +747,20 @@ function animate(now) {
   renderer.render(scene, camera);
 }
 
-// Load the full satellite catalog for the lookup box. async function can wait for slow things, like downloading a long file 
-async function loadSatcat() { 
-  $("lookupResult").textContent = "Loading satellite catalog…"; 
+// Load the full satellite catalog for the lookup box. async function can wait for slow things, like downloading a long file
+async function loadSatcat() {
+  $("lookupResult").textContent = "Loading satellite catalog…";
   const response = await fetch("data/satcat.json");
   if (!response.ok) {
     $("lookupResult").textContent = "Satellite catalog not found. Run:  python Viz/build_satcat_json.py";
     return;
-  } 
+  }
   satcat = await response.json();
   $("lookupResult").textContent = `Catalog ready: ${satcat.length.toLocaleString()} objects.`;
 }
 
 // ---------------------------------------------------------------------------
-// 13. Start: load the satellite list and test cases, then show the first test case
+// 13. Start: load the satellite catalog and TLE library list, then wait for the user to pick satellites
 // ---------------------------------------------------------------------------
 loadSatcat();   // no "await": load the catalog in the background so the 3D view doesn't wait for it
 try {
@@ -702,16 +769,7 @@ try {
   catalog = (await indexResponse.json()).satellites;
   fillDropdowns();
 
-    // Start with the first two satellites in the list, over their full date range
-  await setPair(catalog[0].norad, catalog[1].norad);
-
-  // Test cases are optional shortcuts: if the file is missing, the page still works
-  try {
-    const testCases = (await fetch("data/test_cases.json").then(r => r.json())).testCases;
-    showTestCases(testCases);
-  } catch (error) {
-    console.warn("No test cases loaded:", error);
-  }
+  setPair(null, null);   // start empty: the user picks both satellites
 
 } catch (error) {
   $("rangeNote").textContent = error.message;

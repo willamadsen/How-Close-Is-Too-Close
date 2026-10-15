@@ -54,10 +54,26 @@ pan, zoom, reset, and a configurable recent-history trail:
 
 ## Compare two satellites (work in progress)
 
-`compare.html`, `compare.js`, `data/test_cases.json` and `../Code/build_tle_library.py`
+`compare.html`, `compare.js`, `TESTING.md` and `../Code/build_tle_library.py`
 are working copies that change often. Expect unfinished features and breaking changes.
 The page needs the TLE library in `data/tles/`, which `Code/build_tle_library.py`
 builds from raw TLEs and which is not published in this repository.
+
+**Data sources (testing setup).** CelesTrak is used while the tool is being built
+and tested, and can be swapped for other sources in actual use:
+
+- Satellite names and designators for the search box come from CelesTrak's free
+  catalog (`satcat_ret.py` downloads it; `build_satcat_json.py` trims it to
+  `data/satcat.json`).
+- Satellites that aren't in the TLE library are modeled from their *latest* TLE,
+  fetched live from CelesTrak's GP service (`loadCurrentTle()` in `compare.js`).
+  That gives only one TLE per satellite, so these orbits are only reliable for
+  about a day either side of it.
+
+For actual use, these can be replaced with, for example, historical TLEs from
+Space-Track (downloaded by a script with your own account, never from the
+website itself) added to the TLE library, or another catalog or TLE provider.
+Check each source's terms before publishing its data.
 
 ## Interpretation cautions
 

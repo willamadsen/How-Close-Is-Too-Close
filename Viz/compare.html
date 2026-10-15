@@ -15,14 +15,6 @@
     <p class="wipNote">Work in progress: this page is a working copy and changes often.</p>
     <p class="introText">Pick two satellites and a time window. Orbits are computed from the TLE closest in time to each moment.</p>
 
-    <!-- Preset test cases. compare.js creates one button per entry in data/test_cases.json. -->
-    <section class="panelSection">
-      <div class="sectionTitle">Test cases</div>
-      <div id="testCases" class="testCaseList"></div>
-    </section>
-
-    <hr>
-
     <!-- Satellite lookup: type any identifier, get the satellite's name -->
     <section class="panelSection">
       <div class="sectionTitle">Find a satellite</div>
@@ -122,11 +114,6 @@
     .dateRange input { width:100%; min-width:0; height:32px; padding:0 6px; border:1px solid #ccc; border-radius:8px; color:#444; font:inherit; font-size:12px; }
     .sourceDot.slotA { background:#eaaa00; }
     .sourceDot.slotB { background:#7a7a7a; }
-    .testCaseList { display:flex; flex-direction:column; gap:5px; }
-    .testCase { display:flex; justify-content:space-between; align-items:center; padding:7px 9px; border:1px solid #ddd; border-radius:8px; color:#444; background:#fff; font:inherit; font-size:12px; font-weight:650; text-align:left; cursor:pointer; }
-    .testCase:hover { background:#f7f7f7; }
-    .testCase.active { border-color:#555; box-shadow:inset 0 0 0 1px #555; }
-    .testCase small { color:#888; font-weight:600; }
     .speedSelect { width:auto; height:27px; padding:0 4px; font-size:11px; }
     .identityCard { padding:8px 0; border-top:1px solid #eee; font-size:11px; line-height:1.4; }
     .identityCard:first-child { border-top:0; padding-top:0; }
