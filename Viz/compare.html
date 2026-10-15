@@ -142,6 +142,8 @@
     /* .lookupRow sets display:flex, which would override "hidden", so say explicitly that hidden means hidden */
     #lookupActions[hidden] { display: none; }
     #lookupActions { margin-top: 6px; }
+    #lookupActions button { display:inline-flex; align-items:center; gap:6px; }
+
   </style>
 
   <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->

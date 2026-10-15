@@ -557,9 +557,9 @@ function identify(text) {
 // When a dropdown changes: if the user picked the same satellite as the other slot,
 // swap them so A and B are always different.
 $("satA").addEventListener("change", event => {
-  const a = event.target.value, b = a === pair.B ? pair.A : pair.B;
+  const a = event.target.value, b = a === pair.B ? pair.A : pair.B; //norad number now comes from event.target.value
   markActiveTestCase(null);
-  setPair(a, b);
+  setPair(a, b); //writes two selected satellites into sat pair  S
 });
 $("satB").addEventListener("change", event => {
   const b = event.target.value, a = b === pair.A ? pair.B : pair.A;
@@ -574,6 +574,9 @@ $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue(
 
 // Satellite lookup: run when "Look up" is clicked or Enter is pressed in the box.
 function runLookup() {
+  $("lookupActions").hidden = true;            // tells the html file to hide the Load buttons until we know there's something to load
+  lookupFound = null;                          // forget the previous result
+  
   if (satcat.length === 0) {
     $("lookupResult").textContent = "The satellite catalog is still loading. Try again in a moment.";
     return;
@@ -583,8 +586,19 @@ function runLookup() {
 
   if (matches.length === 0) {
     $("lookupResult").textContent = "No satellite found with that identifier.";
-  } else if (matches.length === 1) {
-    $("lookupResult").textContent = describe(matches[0]);
+} else if (matches.length === 1) {
+    const found = matches[0];
+    // Is this satellite in the TLE library (data/tles/index.json)?
+    // Compare as numbers: the library pads NORAD numbers to 5 digits ("05398"), the catalog doesn't ("5398")
+    const inLibrary = catalog.find(c => Number(c.norad) === Number(found.norad));
+    if (inLibrary) {
+      $("lookupResult").textContent = `${describe(found)}\nTLE history available: load it as satellite A or B.`;
+      lookupFound = inLibrary.norad;           // use the library's spelling, since that's the TLE file's name
+      $("lookupActions").hidden = false;       // show the Load buttons
+    } else {
+      $("lookupResult").textContent = `${describe(found)}\nNo TLE history for this satellite on this site yet.`;
+    }
+
   } else {
     const shown = matches.slice(0, 10);   // show at most 10
     const header = matches.length > 10
@@ -597,6 +611,22 @@ $("lookupBtn").addEventListener("click", runLookup);
 $("lookupInput").addEventListener("keydown", event => {
   if (event.key === "Enter") runLookup();
 });
+
+// "Load as A" / "Load as B": put the satellite the lookup found into that slot.
+// Same rule as the dropdowns: if it's already in the OTHER slot, swap the two.
+$("loadAsA").addEventListener("click", () => { //when the load A button is clicked, run the code inside
+  if (!lookupFound) return;                              // nothing found: do nothing
+  const a = lookupFound, b = a === pair.B ? pair.A : pair.B;
+  markActiveTestCase(null);                              // un-highlight any test case button
+  setPair(a, b);                                         // load TLEs, set the dates, redraw
+});
+$("loadAsB").addEventListener("click", () => {
+  if (!lookupFound) return;
+  const b = lookupFound, a = b === pair.A ? pair.B : pair.A;
+  markActiveTestCase(null);
+  setPair(a, b);
+});
+
 
 
 $("playBtn").addEventListener("click", () => {
