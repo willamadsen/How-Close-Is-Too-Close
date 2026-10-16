@@ -23,10 +23,15 @@ to interpret it.
 ### Compare two satellites (work in progress)
 
 A tool for searching any satellite and comparing two of them, including their
-closest approach. It is being developed on the
+closest approach:
+https://willamadsen.github.io/How-Close-Is-Too-Close/Viz/compare.html
+
+On the live site, satellites are loaded from their latest public TLE (CelesTrak).
+The historical TLE library used for USA 245 and Kosmos 2542/2543 is not published,
+so to compare those, serve this folder locally as above (with the library built)
+and open `http://localhost:8000/Viz/compare.html`. Work continues on the
 [`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
-branch and is not on the live site yet. To try it, check out that branch, serve
-this folder as above, and open `http://localhost:8000/Viz/compare.html`.
+branch.
 
 ## Repository layout
 

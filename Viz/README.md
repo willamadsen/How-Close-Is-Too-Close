@@ -59,9 +59,12 @@ pan, zoom, reset, and a configurable recent-history trail:
 
 ## Compare two satellites (work in progress)
 
-Open <http://localhost:8000/Viz/compare.html> (with the server running as above).
-It is on the [`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
-branch only, so it is not on the live site yet.
+Live: <https://willamadsen.github.io/How-Close-Is-Too-Close/Viz/compare.html>
+(satellites from their latest public TLE only), or locally at
+<http://localhost:8000/Viz/compare.html> with the server running as above (also
+loads the historical TLE library, if it has been built). Work continues on the
+[`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
+branch.
 
 `compare.html`, `compare.js`, `TESTING.md` and `../Code/build_tle_library.py`
 are working copies that change often. Expect unfinished features and breaking changes.

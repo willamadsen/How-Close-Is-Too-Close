@@ -119,7 +119,12 @@
     <button id="zoomOutBtn" class="cameraBtn" title="Zoom out">−</button>
     <button id="resetBtn" class="cameraBtn" title="Reset view">⌂</button>
     <!-- Relative motion only: show or hide the radial / along-track / cross-track axes -->
-    <button id="axesBtn" class="cameraBtn" title="Show or hide direction axes (radial, along-track, cross-track)" hidden>✛</button>
+    <button id="axesBtn" class="cameraBtn axesBtn" title="Show or hide direction axes (radial, along-track, cross-track)" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M6 18 L6 5 M6 18 L19 18 M6 18 L15 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+
   </div>
   <div id="brand"><img src="assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
 
@@ -154,6 +159,8 @@
         .centreSwitch { margin-top:6px; }
     .centreSwitch[hidden] { display:none; }   /* .viewSwitch sets display:flex, which would override "hidden" */
     .cameraBtn.isOn { color:#fff; background:#555; }   /* the axes button when the axes are showing */
+        .axesBtn { display:flex; align-items:center; justify-content:center; }   /* centre the icon in the button */
+    .axesBtn[hidden] { display:none; }   /* display:flex would otherwise override "hidden" */
     .centreSwitch .viewSwitchOption { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
     #lookupActions { margin-top: 6px; }
     #lookupActions button { display:inline-flex; align-items:center; gap:6px; }

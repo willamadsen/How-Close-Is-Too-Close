@@ -793,22 +793,6 @@ scene.add(relativeAxes);
   axis(new THREE.Vector3(-14, 0, 0), new THREE.Vector3(14, 0, 0));
   axis(new THREE.Vector3(0, -5, 0), new THREE.Vector3(0, 5, 0));
   axis(new THREE.Vector3(0, 0, -14), new THREE.Vector3(0, 0, 14));
-  const axisLabel = (text, position) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512; canvas.height = 96;
-    const ctx = canvas.getContext("2d");
-    ctx.font = "600 34px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-    ctx.fillStyle = "#666"; ctx.textAlign = "center";
-    ctx.fillText(text, 256, 57);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
-    sprite.position.copy(position);
-    sprite.scale.set(3.8, 0.7, 1);
-    sprite.renderOrder = 20;
-    relativeAxes.add(sprite);
-  };
-  axisLabel("I  ·  along-track", new THREE.Vector3(13.2, 0.45, 0));
-  axisLabel("C  ·  cross-track", new THREE.Vector3(0, 4.7, 0));
-  axisLabel("R  ·  radial", new THREE.Vector3(0, 0.45, 12.5));
 }
 
 // B's fading trail: one line whose colour goes from white (4 hours ago, blending into the
