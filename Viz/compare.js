@@ -277,6 +277,35 @@ for (const slot of ["A", "B"]) {
   trails[slot] = trail;
 }
 
+
+// Name labels that sit next to each dot in the 3D view.
+// Text is drawn onto a small image (a "canvas"), which becomes the label's texture.
+const labels = {};  // labels.A and labels.B
+for (const slot of ["A", "B"]) {
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }));
+  // Where the label sits next to its dot: A's just above and to the right, B's just below and to the
+  // right, so the two names don't overlap when the satellites are close together.
+  label.center.set(-0.08, slot === "A" ? -0.1 : 1.1);
+  label.scale.set(0.29, 0.055, 1);   // the label image is 5.33 times wider than it is tall
+  label.renderOrder = 9;
+  label.visible = false;
+  scene.add(label);
+  labels[slot] = label;
+}
+function setLabelText(slot, text) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512; canvas.height = 96;
+  const ctx = canvas.getContext("2d");
+  ctx.font = "650 44px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+  ctx.fillStyle = "#333";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 8, 48);
+  labels[slot].material.map?.dispose();
+  labels[slot].material.map = new THREE.CanvasTexture(canvas);
+  labels[slot].material.needsUpdate = true;
+}
+
+
 // ---------------------------------------------------------------------------
 // 7. Formatting helpers
 // ---------------------------------------------------------------------------
@@ -332,6 +361,11 @@ function updateScene() {
 
   // Spin Earth to the right angle for this moment (Greenwich sidereal time).
   earthGroup.rotation.y = -sgp4.gstime(new Date(currentMs));
+
+  for (const slot of ["A", "B"]) {             // name labels follow their dots
+    labels[slot].position.copy(dots[slot].position);
+    labels[slot].visible = dots[slot].visible;
+  }
 
   drawSeparationChart();
   updateIdentity();
@@ -505,7 +539,8 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   // Show the choices in the dropdowns (live satellites get added to them first)
   if (pair.A) addToDropdowns(pair.A);
   if (pair.B) addToDropdowns(pair.B);
-  $("satA").value = pair.A ?? ""; $("satB").value = pair.B ?? "";
+  $("satA").value = pair.A ?? ""; $("satB").value = pair.B ?? "";  
+    updateNames();
 
   if (failed || !pair.A || !pair.B) {                    // nothing to model yet
     clearScene();
@@ -544,6 +579,7 @@ function applyLimits(requestedStart = null, requestedEnd = null) {
 function clearScene() {
   for (const slot of ["A", "B"]) {
     dots[slot].visible = false;                          // hide the satellite's dot
+    labels[slot].visible = false;                        // and its name
     trails[slot].geometry.dispose();                     // free the old orbit line's memory...
     trails[slot].geometry = new THREE.BufferGeometry();  // ...and replace it with an empty one
   }
@@ -574,6 +610,20 @@ function addToDropdowns(norad) {
     }
   }
 }
+// The name of the satellite in a slot ("A" or "B"), or "Satellite A" / "Satellite B" if none is loaded yet.
+function slotName(slot) {
+  return library[pair[slot]]?.info.name ?? `Satellite ${slot}`;
+}
+
+// Show the chosen satellites' names in the panel and the 3D view, instead of "A" and "B".
+function updateNames() {
+  $("nameA").textContent = slotName("A");
+  $("nameB").textContent = slotName("B");
+  $("separationTitle").textContent = `Separation between ${slotName("A")} and ${slotName("B")}`;
+  setLabelText("A", slotName("A"));
+  setLabelText("B", slotName("B"));
+}
+
 
 // Fill both dropdowns with every satellite in the library, e.g. "USA 245 (39232)",
 // after a blank "Choose a satellite…" option for when nothing is chosen yet.
@@ -685,7 +735,7 @@ function runLookup() {
     }
   } else {
     const shown = matches.slice(0, 10);   // show at most 10
-    cFonst header = matches.length > 10
+    const header = matches.length > 10
       ? `${matches.length} matches (showing the first 10):`
       : `${matches.length} matches:`;
     $("lookupResult").textContent = [header, ...shown.map(describe)].join("\n");
