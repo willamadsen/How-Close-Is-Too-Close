@@ -45,7 +45,8 @@ const $ = id => document.getElementById(id);
 // ---------------------------------------------------------------------------
 // 3. Things that DO change while the page runs ("let" = can be reassigned)
 // ---------------------------------------------------------------------------
-let catalog = [];            // List of satellites from data/tles/index.json
+let catalog = [];            // List of satellites from the TLE library's index.json
+let tleFolder = "data/tles"; // where the TLE library is: the full one (on your computer) or data/tles_public (on the live site)
 let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
 let satcatError = "";        // why the catalog failed to load ("" = no problem so far)
 let closest = null;          // the closest approach in the time window, once found: { ms, km, stepMs }
@@ -83,9 +84,10 @@ async function loadSatellite(norad) {
   return library[norad];
 }
 
-// Full TLE history from our own library: data/tles/<NORAD>.json (made by build_tle_library.py)
+// TLE history from our own library: <tleFolder>/<NORAD>.json (made by build_tle_library.py,
+// or the published subset made by build_public_tle_library.py)
 async function loadLibraryTles(norad) {
-  const response = await fetch(`data/tles/${norad}.json`);
+  const response = await fetch(`${tleFolder}/${norad}.json`);
   if (!response.ok) throw new Error(`Could not load TLEs for NORAD ${norad} (HTTP ${response.status})`);
   return (await response.json()).tles;
 }
@@ -903,7 +905,7 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   // distance: big enough to see clearly. When the satellites are very close they may overlap
   // a little; zoom in (+) to see the gap between them.
   const size = !relative ? 0.055
-    : fitBoth ? 0.02 * cameraDistance
+    : fitBoth ? 0.004 * cameraDistance
     : (0.028 / 0.48) * cameraDistance;
 
   // Name labels: a readable text size in the relative view (2.2% of the camera's distance), not
@@ -1133,7 +1135,11 @@ async function loadSatcat() {
 // ---------------------------------------------------------------------------
 loadSatcat();   // no "await": load the catalog in the background so the 3D view doesn't wait for it
 try {
-  const indexResponse = await fetch("data/tles/index.json");
+  let indexResponse = await fetch(`${tleFolder}/index.json`);
+  if (!indexResponse.ok) {                     // no full library (as on the live site): use the published subset
+    tleFolder = "data/tles_public";
+    indexResponse = await fetch(`${tleFolder}/index.json`);
+  }
   if (!indexResponse.ok) throw new Error("TLE library not found. Run:  python Code/build_tle_library.py");
   catalog = (await indexResponse.json()).satellites;
   fillDropdowns();

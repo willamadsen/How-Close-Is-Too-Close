@@ -26,10 +26,11 @@ A tool for searching any satellite and comparing two of them, including their
 closest approach:
 https://willamadsen.github.io/How-Close-Is-Too-Close/Viz/compare.html
 
-On the live site, satellites are loaded from their latest public TLE (CelesTrak).
-The historical TLE library used for USA 245 and Kosmos 2542/2543 is not published,
-so to compare those, serve this folder locally as above (with the library built)
-and open `http://localhost:8000/Viz/compare.html`. Work continues on the
+On the live site, USA 245 and Kosmos 2542/2543 can be compared around the key
+approaches (Dec 6, 2019 – Jan 30, 2020) from a small published subset of their TLEs;
+other satellites load from their latest public TLE (CelesTrak). The full TLE history
+is not published: to use it, serve this folder locally as above (with the library
+built) and open `http://localhost:8000/Viz/compare.html`. Work continues on the
 [`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
 branch.
 

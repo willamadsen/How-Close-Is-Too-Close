@@ -1,0 +1,72 @@
+{
+  "generated": "2026-10-16T17:50:37Z",
+  "publicSubset": true,
+  "keyEvents": [
+    {
+      "start": "2019-12-06",
+      "end": "2019-12-16",
+      "description": "Kosmos 2543 separates from Kosmos 2542"
+    },
+    {
+      "start": "2019-12-31",
+      "end": "2020-01-05",
+      "description": "Early-January 2020 approach to USA 245"
+    },
+    {
+      "start": "2020-01-20",
+      "end": "2020-01-30",
+      "description": "Late-January 2020 approach to USA 245"
+    }
+  ],
+  "satellites": [
+    {
+      "norad": "39232",
+      "name": "USA 245",
+      "intlDes": "2013-043A",
+      "country": "US",
+      "tleCount": 6,
+      "firstEpoch": "2018-02-20T19:48:04.000320Z",
+      "lastEpoch": "2021-08-30T20:03:37.680192Z",
+      "sources": [
+        "seesat"
+      ],
+      "warnings": [
+        "1 TLE(s) list international designator 2013-034A, but the catalog says 2013-043A.",
+        "2 TLE(s) have an invalid checksum (common for amateur-observer TLEs).",
+        "1 TLE(s) shared an epoch with a different TLE and were skipped."
+      ]
+    },
+    {
+      "norad": "44797",
+      "name": "KOSMOS 2542",
+      "intlDes": "2019-079A",
+      "country": "CIS",
+      "tleCount": 55,
+      "firstEpoch": "2019-12-06T17:03:17.167104Z",
+      "lastEpoch": "2020-01-30T11:18:59.325408Z",
+      "sources": [
+        "space-track"
+      ],
+      "warnings": [
+        "26 TLE(s) shared an epoch with a different TLE and were skipped.",
+        "Public subset: only TLEs around the key events are included (the full Space-Track history is not published)."
+      ]
+    },
+    {
+      "norad": "44835",
+      "name": "KOSMOS 2543",
+      "intlDes": "2019-079D",
+      "country": "CIS",
+      "tleCount": 55,
+      "firstEpoch": "2019-12-06T13:49:16.059648Z",
+      "lastEpoch": "2020-01-30T11:38:32.043840Z",
+      "sources": [
+        "space-track"
+      ],
+      "warnings": [
+        "18 TLE(s) shared an epoch with a different TLE and were skipped.",
+        "Public subset: only TLEs around the key events are included (the full Space-Track history is not published)."
+      ]
+    }
+  ]
+}

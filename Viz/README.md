@@ -60,16 +60,20 @@ pan, zoom, reset, and a configurable recent-history trail:
 ## Compare two satellites (work in progress)
 
 Live: <https://willamadsen.github.io/How-Close-Is-Too-Close/Viz/compare.html>
-(satellites from their latest public TLE only), or locally at
-<http://localhost:8000/Viz/compare.html> with the server running as above (also
-loads the historical TLE library, if it has been built). Work continues on the
+(the published TLE subset below, plus any satellite's latest public TLE), or locally
+at <http://localhost:8000/Viz/compare.html> with the server running as above (also
+loads the full historical TLE library, if it has been built). Work continues on the
 [`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
 branch.
 
 `compare.html`, `compare.js`, `TESTING.md` and `../Code/build_tle_library.py`
 are working copies that change often. Expect unfinished features and breaking changes.
-The page needs the TLE library in `data/tles/`, which `Code/build_tle_library.py`
-builds from raw TLEs and which is not published in this repository.
+The page uses the TLE library in `data/tles/`, which `Code/build_tle_library.py`
+builds from raw TLEs and which is not published in this repository. When that folder
+is missing (as on the live site), it uses `data/tles_public/` instead: a small subset
+made by `Code/build_public_tle_library.py`, with all of USA 245's SeeSat-L TLEs and
+only the Kosmos 2542/2543 Space-Track TLEs from the key-event windows in `TESTING.md`
+(Dec 6–16, 2019; Dec 31, 2019 – Jan 5, 2020; Jan 20–30, 2020).
 
 **Data sources (testing setup).** CelesTrak is used while the tool is being built
 and tested, and can be swapped for other sources in actual use:
