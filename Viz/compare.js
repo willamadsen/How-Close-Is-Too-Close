@@ -47,6 +47,7 @@ const $ = id => document.getElementById(id);
 // ---------------------------------------------------------------------------
 let catalog = [];            // List of satellites from data/tles/index.json
 let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
+let satcatError = "";        // why the catalog failed to load ("" = no problem so far)
 let lookupFound = null;      // NORAD number (as used in the TLE library) of the satellite the lookup found, if it has TLEs
 const library = {};          // Loaded TLE histories, keyed by NORAD number
 const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B
@@ -609,6 +610,10 @@ function identify(text) {
   if (/^\d{4}-\d{3}[A-Z]{1,3}$/.test(text)) {
     return satcat.filter(s => s.intlDes === text);
   }
+   // 2b. A whole launch: a long designator without the piece letters, like 2019-079
+  if (/^\d{4}-\d{3}$/.test(text)) {
+    return satcat.filter(s => s.intlDes.startsWith(text));
+  }
 
   // 3. Short international designator, like 19079A
   if (/^\d{5}[A-Z]{1,3}$/.test(text)) {
@@ -620,7 +625,11 @@ function identify(text) {
   const name = text.replace("KOSMOS", "COSMOS");
   const exact = satcat.filter(s => s.name === name);
   if (exact.length > 0) return exact;              // exact name match wins
-  return satcat.filter(s => s.name.includes(name)); // otherwise, any name containing it
+    // Otherwise, best matches first: names that START with the text, then names that contain it elsewhere
+  const startsWith = satcat.filter(s => s.name.startsWith(name));
+  const containsElsewhere = satcat.filter(s => s.name.includes(name) && !s.name.startsWith(name));
+  return [...startsWith, ...containsElsewhere];
+
 }
 
 // ---------------------------------------------------------------------------
@@ -645,8 +654,12 @@ $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue(
 // Satellite lookup: run when "Look up" is clicked or Enter is pressed in the box.
 function runLookup() {
   $("lookupActions").hidden = true;            // tells the html file to hide the Load buttons until we know there's something to load
-  lookupFound = null;                          // forget the previous result
+   lookupFound = null;                          // forget the previous result
 
+  if (satcatError) {                           // the catalog FAILED to load: keep saying why
+    $("lookupResult").textContent = satcatError;
+    return;
+  }
   if (satcat.length === 0) {
     $("lookupResult").textContent = "The satellite catalog is still loading. Try again in a moment.";
     return;
@@ -672,7 +685,7 @@ function runLookup() {
     }
   } else {
     const shown = matches.slice(0, 10);   // show at most 10
-    const header = matches.length > 10
+    cFonst header = matches.length > 10
       ? `${matches.length} matches (showing the first 10):`
       : `${matches.length} matches:`;
     $("lookupResult").textContent = [header, ...shown.map(describe)].join("\n");
@@ -750,13 +763,15 @@ function animate(now) {
 // Load the full satellite catalog for the lookup box. async function can wait for slow things, like downloading a long file
 async function loadSatcat() {
   $("lookupResult").textContent = "Loading satellite catalog…";
-  const response = await fetch("data/satcat.json");
-  if (!response.ok) {
-    $("lookupResult").textContent = "Satellite catalog not found. Run:  python Viz/build_satcat_json.py";
-    return;
+  try {                                                  // if anything inside fails, jump to catch
+    const response = await fetch("data/satcat.json");
+    if (!response.ok) throw new Error("Satellite catalog not found. Run:  python Viz/build_satcat_json.py");
+    satcat = await response.json();
+    $("lookupResult").textContent = `Catalog ready: ${satcat.length.toLocaleString()} objects.`;
+  } catch (error) {                                      // missing file, broken file, or no connection
+    satcatError = error.message;                         // remember why, for runLookup
+    $("lookupResult").textContent = satcatError;
   }
-  satcat = await response.json();
-  $("lookupResult").textContent = `Catalog ready: ${satcat.length.toLocaleString()} objects.`;
 }
 
 // ---------------------------------------------------------------------------
