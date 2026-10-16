@@ -20,6 +20,14 @@ python -m http.server 8000
 See [Viz/README.md](Viz/README.md) for how the visualization is built and how
 to interpret it.
 
+### Compare two satellites (work in progress)
+
+A tool for searching any satellite and comparing two of them, including their
+closest approach. It is being developed on the
+[`compare-wip`](https://github.com/willamadsen/How-Close-Is-Too-Close/tree/compare-wip)
+branch and is not on the live site yet. To try it, check out that branch, serve
+this folder as above, and open `http://localhost:8000/Viz/compare.html`.
+
 ## Repository layout
 
 | Folder | Contents |
