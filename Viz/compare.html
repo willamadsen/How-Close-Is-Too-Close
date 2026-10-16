@@ -66,12 +66,26 @@
 
     <section class="panelSection">
 <div id="separationTitle" class="sectionTitle">Separation between A and B</div>
-
+      <!-- Camera view: the whole Earth, or zoomed in with satellite A at the centre -->
+      <div class="viewSwitch" aria-label="Camera view">
+        <button id="earthView" class="viewSwitchOption activeViewSwitch" type="button">Full Earth</button>
+        <button id="relativeView" class="viewSwitchOption" type="button">Relative motion</button>
+      </div>
+      <div id="viewNote" class="methodNote"></div>
       <div class="statsGrid">
         <div class="statBlock"><div id="rangeStat" class="statNumber">—</div><div class="statLabel">Distance apart</div></div>
         <div class="statBlock"><div id="timeDisplay" class="statNumber small">—</div><div class="statLabel">Animated UTC time</div></div>
       </div>
       <canvas id="separationChart" width="300" height="150" aria-label="Separation distance over the last two hours"></canvas>
+            <!-- Closest approach in the chosen time window. compare.js fills this in. -->
+      <div id="closestApproach" class="closestApproach" hidden>
+        <div class="statsGrid">
+          <div class="statBlock"><div id="caDistance" class="statNumber">—</div><div class="statLabel">Closest approach</div></div>
+          <div class="statBlock"><div id="caTime" class="statNumber small">—</div><div class="statLabel">When (UTC)</div></div>
+        </div>
+        <div id="caDetails" class="methodNote"></div>
+        <button id="caViewBtn" class="caViewBtn" type="button">View closest approach</button>
+      </div>
     </section>
 
     <hr>
@@ -132,6 +146,9 @@
     #lookupActions[hidden] { display: none; }
     #lookupActions { margin-top: 6px; }
     #lookupActions button { display:inline-flex; align-items:center; gap:6px; }
+        .closestApproach { margin-top:12px; padding-top:10px; border-top:1px solid #eee; }
+    .caViewBtn { width:100%; height:32px; margin-top:8px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
+    .caViewBtn:hover { background:#f7f7f7; }
 
   </style>
 

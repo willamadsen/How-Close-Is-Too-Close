@@ -48,6 +48,7 @@ const $ = id => document.getElementById(id);
 let catalog = [];            // List of satellites from data/tles/index.json
 let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
 let satcatError = "";        // why the catalog failed to load ("" = no problem so far)
+let closest = null;          // the closest approach in the time window, once found: { ms, km, stepMs }
 let lookupFound = null;      // NORAD number (as used in the TLE library) of the satellite the lookup found, if it has TLEs
 const library = {};          // Loaded TLE histories, keyed by NORAD number
 const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B
@@ -362,6 +363,8 @@ function updateScene() {
   // Spin Earth to the right angle for this moment (Greenwich sidereal time).
   earthGroup.rotation.y = -sgp4.gstime(new Date(currentMs));
 
+  if (view === "relative") drawRelative();
+
   for (const slot of ["A", "B"]) {             // name labels follow their dots
     labels[slot].position.copy(dots[slot].position);
     labels[slot].visible = dots[slot].visible;
@@ -499,7 +502,7 @@ function fullEarthFraming() {
 
 // Glide the camera to the framing over 0.9 seconds instead of jumping.
 function moveCameraSmoothly() {
-  const framing = fullEarthFraming();
+    const framing = view === "relative" ? relativeFraming() : fullEarthFraming();
   cameraTween = {
     start: performance.now(), duration: 900,
     fromPosition: camera.position.clone(), toPosition: framing.position,
@@ -551,7 +554,7 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   }
   applyLimits(requestedStart, requestedEnd);
   lastIdentityKey = "";
-  moveCameraSmoothly();
+    setView(view);                                         // redraw and re-frame in the current view
 }
 
 // Set the date pickers' allowed range from the TLE data, then set the window
@@ -587,6 +590,8 @@ function clearScene() {
   $("timeDisplay").textContent = "—";                   // time
   $("identity").innerHTML = "";                          // "Now modeling" panel
   lastIdentityKey = "";                                  // make sure the panel rebuilds next time
+    closest = null;
+  $("closestApproach").hidden = true;
   const chart = $("separationChart");
   chart.getContext("2d").clearRect(0, 0, chart.width, chart.height);   // blank the chart
 }
@@ -598,8 +603,9 @@ function setWindow(newStart, newEnd) {
   $("startTime").value = toInputValue(startMs);
   $("endTime").value = toInputValue(endMs);
   $("timelineSlider").min = startMs;
-  $("timelineSlider").max = endMs;
+   $("timelineSlider").max = endMs;
   updateScene();
+  updateClosestApproach();
 }
 
 // Add a satellite loaded live from CelesTrak to both dropdowns (once), so it can be picked again.
@@ -681,6 +687,169 @@ function identify(text) {
   return [...startsWith, ...containsElsewhere];
 
 }
+// ---------------------------------------------------------------------------
+// Closest approach: when, during the time window, are A and B nearest each other?
+// ---------------------------------------------------------------------------
+// Step 1: check the distance at evenly spaced moments (every 30 seconds, or fewer
+//         checks for long windows, so there are never more than about 20,000).
+// Step 2: every "dip" (a moment closer than the moments either side of it) might be
+//         the closest approach, so zoom in on the 10 deepest dips to find the exact moment.
+function findClosestApproach() {
+  const stepMs = Math.max(30 * 1000, (endMs - startMs) / 20000);
+  const samples = [];
+  for (let ms = startMs; ms <= endMs; ms += stepMs) samples.push({ ms, km: separationAt(ms) });
+  const dips = samples.filter((s, i) => s.km !== null
+    && (i === 0 || samples[i - 1].km === null || s.km <= samples[i - 1].km)
+    && (i === samples.length - 1 || samples[i + 1].km === null || s.km <= samples[i + 1].km));
+  if (dips.length === 0) return null;
+  dips.sort((p, q) => p.km - q.km);                      // deepest dips first
+  let best = null;
+  for (const dip of dips.slice(0, 10)) {
+    const found = zoomInOnDip(dip.ms - stepMs, dip.ms + stepMs);
+    if (found && (!best || found.km < best.km)) best = found;
+  }
+  if (best) best.stepMs = stepMs;
+  return best;
+}
+
+// Zoom in on the closest moment between lo and hi: check 100 evenly spaced moments,
+// keep the closest, then repeat in a narrower range around it until we're within a second.
+function zoomInOnDip(lo, hi) {
+  lo = Math.max(startMs, lo); hi = Math.min(endMs, hi);
+  let best = null;
+  while (true) {
+    const step = (hi - lo) / 100;
+    for (let i = 0; i <= 100; i++) {
+      const ms = lo + i * step, km = separationAt(ms);
+      if (km !== null && (!best || km < best.km)) best = { ms, km };
+    }
+    if (!best || step < 1000) return best;
+    lo = Math.max(startMs, best.ms - step); hi = Math.min(endMs, best.ms + step);
+  }
+}
+
+// "21.4 km" for small distances, "6,176 km" for big ones
+const formatKm = km => km < 100 ? `${km.toFixed(1)} km` : `${Math.round(km).toLocaleString()} km`;
+const formatTimeSeconds = ms => new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" }).format(new Date(ms));
+// ---------------------------------------------------------------------------
+// Relative motion view: satellite A sits still at the centre, and B is drawn where it is
+// RELATIVE to A, along A's own directions:
+//   radial      = straight up, away from Earth
+//   along-track = the direction A is travelling
+//   cross-track = sideways, out of A's orbit plane
+// ---------------------------------------------------------------------------
+let view = "earth";            // "earth" (Full Earth) or "relative" (Relative motion)
+let relativeScaleKm = 1000;    // in the relative view, 1 scene unit = this many km
+
+// B's position relative to A, as [radial, along-track, cross-track] in km.
+function ricOf(stateA, rB) {
+  const unit = v => { const n = Math.hypot(v[0], v[1], v[2]); return v.map(x => x / n); };
+  const cross = (p, q) => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+  const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+  const R = unit(stateA.r);                    // up
+  const C = unit(cross(stateA.r, stateA.v));   // out of the orbit plane
+  const I = cross(C, R);                       // along the direction of travel
+  const d = [rB[0] - stateA.r[0], rB[1] - stateA.r[1], rB[2] - stateA.r[2]];   // from A to B
+  return [dot(d, R), dot(d, I), dot(d, C)];
+}
+
+// Same layout as the original page: along-track left-right, cross-track up-down, radial towards you.
+const relativeToScene = ([r, i, c]) => new THREE.Vector3(i, c, r).divideScalar(relativeScaleKm);
+
+// B relative to A at time ms, as a point in the scene (or null if a position isn't available)
+function relativePointAt(ms) {
+  const a = stateAt(pair.A, ms), b = positionAt(pair.B, ms);
+  return a && b ? relativeToScene(ricOf(a, b)) : null;
+}
+
+// Three labelled axis lines through A, shown only in the relative view.
+const relativeAxes = new THREE.Group();
+relativeAxes.visible = false;
+scene.add(relativeAxes);
+{
+  const material = new THREE.LineBasicMaterial({ color: 0xbbbbbb });
+  const axis = (from, to) => relativeAxes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([from, to]), material));
+  axis(new THREE.Vector3(-1.5, 0, 0), new THREE.Vector3(1.5, 0, 0));
+  axis(new THREE.Vector3(0, -1.5, 0), new THREE.Vector3(0, 1.5, 0));
+  axis(new THREE.Vector3(0, 0, -1.5), new THREE.Vector3(0, 0, 1.5));
+  const axisLabel = (text, position) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 96;
+    const ctx = canvas.getContext("2d");
+    ctx.font = "600 34px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    ctx.fillStyle = "#777"; ctx.textAlign = "center";
+    ctx.fillText(text, 256, 57);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+    sprite.position.copy(position);
+    sprite.scale.set(0.8, 0.15, 1);
+    relativeAxes.add(sprite);
+  };
+  axisLabel("along-track →", new THREE.Vector3(1.5, 0.1, 0));
+  axisLabel("cross-track ↑", new THREE.Vector3(0, 1.62, 0));
+  axisLabel("radial (up) ↗", new THREE.Vector3(0, 0.1, 1.5));
+}
+
+// In the relative view, move the dots and B's line (B's path around A over the last orbit).
+function drawRelative() {
+  dots.A.visible = true;
+  dots.A.position.set(0, 0, 0);
+  const now = relativePointAt(currentMs);
+  dots.B.visible = now !== null;
+  if (now) dots.B.position.copy(now);
+  const lib = library[pair.A];
+  const periodMs = (2 * Math.PI / satrecFor(lib, nearestTleIndex(lib, currentMs)).no) * MINUTE_MS;
+  const points = [];
+  for (let i = 0; i <= TRAIL_POINTS; i++) {
+    const p = relativePointAt(currentMs - periodMs * (1 - i / TRAIL_POINTS));
+    if (p) points.push(p);
+  }
+  trails.B.geometry.dispose();
+  trails.B.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  trails.A.geometry.dispose();
+  trails.A.geometry = new THREE.BufferGeometry();       // A doesn't move in this view
+}
+
+// Switch between the Full Earth and Relative motion views.
+function setView(next) {
+  view = next;
+  earthGroup.visible = view === "earth";
+  relativeAxes.visible = view === "relative";
+  $("earthView").classList.toggle("activeViewSwitch", view === "earth");
+  $("relativeView").classList.toggle("activeViewSwitch", view === "relative");
+  if (view === "relative") {
+    relativeScaleKm = Math.max(1, separationAt(currentMs) ?? 1000);   // so B starts about 1 unit from A
+    $("viewNote").textContent = `${slotName("A")} is at the centre; the axes reach ±${formatKm(1.5 * relativeScaleKm)}.`;
+  } else {
+    $("viewNote").textContent = "";
+  }
+  if (pair.A && pair.B) updateScene();
+  moveCameraSmoothly();
+}
+
+// Look at the point halfway between A (at the centre) and B, from a slight angle.
+function relativeFraming() {
+  const target = dots.B.position.clone().multiplyScalar(0.5);
+  const direction = new THREE.Vector3(1, 0.62, 1.08).normalize();
+  return { position: target.clone().add(direction.multiplyScalar(8)), target };
+}
+
+
+// Work out the closest approach for the current window and show it in the panel.
+function updateClosestApproach() {
+  closest = pair.A && pair.B ? findClosestApproach() : null;
+  $("closestApproach").hidden = !closest;
+  if (!closest) return;
+  const tleAges = ["A", "B"].map(slot => {
+    const lib = library[pair[slot]], i = nearestTleIndex(lib, closest.ms);
+    return `${slotName(slot)} ${describeAge(closest.ms - lib.epochsMs[i])}`;
+  });
+  $("caDistance").textContent = formatKm(closest.km);
+  $("caTime").textContent = formatTimeSeconds(closest.ms);
+  $("caDetails").textContent =
+    `Nearest TLEs: ${tleAges.join("; ")}. ` +
+    `Checked every ${Math.round(closest.stepMs / 1000).toLocaleString()} s, then narrowed to 1 s. ` +
+    `Accuracy is limited by the TLEs (typically a kilometre or more, worse far from a TLE epoch).`;
+}
 
 // ---------------------------------------------------------------------------
 // 11. Responding to the user
@@ -757,6 +926,20 @@ $("loadAsB").addEventListener("click", () => {
   if (!lookupFound) return;
   const b = lookupFound, a = b === pair.A ? pair.B : pair.A;
   setPair(a, b);
+});
+
+// Full Earth / Relative motion switch
+$("earthView").addEventListener("click", () => setView("earth"));
+$("relativeView").addEventListener("click", () => setView("relative"));
+
+
+// Jump to the closest approach, in the satellite-centred view
+$("caViewBtn").addEventListener("click", () => {
+  if (!closest) return;
+  playing = false;                                       // pause, so it stays on that moment
+  $("playBtn").innerHTML = '<span class="playIcon">▶</span>';
+  currentMs = closest.ms;
+  setView("relative");
 });
 
 $("playBtn").addEventListener("click", () => {
