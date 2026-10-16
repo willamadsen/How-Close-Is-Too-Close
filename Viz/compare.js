@@ -363,7 +363,7 @@ function updateScene() {
   // Spin Earth to the right angle for this moment (Greenwich sidereal time).
   earthGroup.rotation.y = -sgp4.gstime(new Date(currentMs));
 
-  if (view === "relative") drawRelative();
+    if (view === "relative" && pair.A && pair.B) drawRelative();
 
   for (const slot of ["A", "B"]) {             // name labels follow their dots
     labels[slot].position.copy(dots[slot].position);
@@ -488,6 +488,7 @@ function updateIdentity() {
 function fullEarthFraming() {
   const normals = [];
   for (const slot of ["A", "B"]) {
+    if (!pair[slot]) continue;                  // empty slot
     const state = stateAt(pair[slot], currentMs);
     if (!state) continue;
     const normal = eciToScene(state.r).cross(eciToScene(state.v)).normalize();
@@ -545,7 +546,8 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   $("satA").value = pair.A ?? ""; $("satB").value = pair.B ?? "";  
     updateNames();
 
-  if (failed || !pair.A || !pair.B) {                    // nothing to model yet
+    if (failed || !pair.A || !pair.B) {                    // nothing to model yet
+    setView("earth");                                    // back to Full Earth
     clearScene();
     $("rangeNote").textContent = failed ? failed.reason.message
       : (pair.A || pair.B) ? `Now choose satellite ${pair.A ? "B" : "A"}.`
@@ -623,6 +625,8 @@ function slotName(slot) {
 
 // Show the chosen satellites' names in the panel and the 3D view, instead of "A" and "B".
 function updateNames() {
+   $("centreNameA").textContent = slotName("A");
+  $("centreNameB").textContent = slotName("B");
   $("nameA").textContent = slotName("A");
   $("nameB").textContent = slotName("B");
   $("separationTitle").textContent = `Separation between ${slotName("A")} and ${slotName("B")}`;
@@ -731,106 +735,229 @@ function zoomInOnDip(lo, hi) {
 // "21.4 km" for small distances, "6,176 km" for big ones
 const formatKm = km => km < 100 ? `${km.toFixed(1)} km` : `${Math.round(km).toLocaleString()} km`;
 const formatTimeSeconds = ms => new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" }).format(new Date(ms));
+
 // ---------------------------------------------------------------------------
-// Relative motion view: satellite A sits still at the centre, and B is drawn where it is
-// RELATIVE to A, along A's own directions:
+// Relative motion view (set up like the original storyline page):
+// satellite A sits still at the centre, and B is drawn where it is RELATIVE to A,
+// along A's own directions:
 //   radial      = straight up, away from Earth
 //   along-track = the direction A is travelling
 //   cross-track = sideways, out of A's orbit plane
+// Earth is drawn to scale underneath, and B leaves a fading trail of the last 4 hours.
 // ---------------------------------------------------------------------------
-let view = "earth";            // "earth" (Full Earth) or "relative" (Relative motion)
-let relativeScaleKm = 1000;    // in the relative view, 1 scene unit = this many km
+let view = "earth";                  // "earth" (Full Earth) or "relative" (Relative motion)
+let showAxes = false;                // direction axes on or off (the round button under the home button)
+let centre = "A";                    // which satellite sits at the centre of the relative view: "A" or "B"
+const otherSlot = () => centre === "A" ? "B" : "A";   // the satellite that moves around it
+const RELATIVE_SCALE_KM = 1000;      // in the relative view, 1 scene unit = 1,000 km (as in the original)
+const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
+const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
+const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
+const RELATIVE_ORBIT_POINTS = 600;  // points in each grey orbit line in the relative view
 
-// B's position relative to A, as [radial, along-track, cross-track] in km.
-function ricOf(stateA, rB) {
+// A's own directions (each an arrow of length 1, in Earth-centred coordinates)
+function ricAxes(stateA) {
   const unit = v => { const n = Math.hypot(v[0], v[1], v[2]); return v.map(x => x / n); };
   const cross = (p, q) => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
-  const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
   const R = unit(stateA.r);                    // up
   const C = unit(cross(stateA.r, stateA.v));   // out of the orbit plane
   const I = cross(C, R);                       // along the direction of travel
-  const d = [rB[0] - stateA.r[0], rB[1] - stateA.r[1], rB[2] - stateA.r[2]];   // from A to B
+  return { R, I, C };
+}
+
+// Any position, measured from A along A's directions: [radial, along-track, cross-track] in km.
+function ricOf(stateA, r) {
+  const { R, I, C } = ricAxes(stateA);
+  const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+  const d = [r[0] - stateA.r[0], r[1] - stateA.r[1], r[2] - stateA.r[2]];   // from A to the position
   return [dot(d, R), dot(d, I), dot(d, C)];
 }
 
 // Same layout as the original page: along-track left-right, cross-track up-down, radial towards you.
-const relativeToScene = ([r, i, c]) => new THREE.Vector3(i, c, r).divideScalar(relativeScaleKm);
+const relativeToScene = ([r, i, c]) => new THREE.Vector3(i, c, r).divideScalar(RELATIVE_SCALE_KM);
 
 // B relative to A at time ms, as a point in the scene (or null if a position isn't available)
-function relativePointAt(ms) {
-  const a = stateAt(pair.A, ms), b = positionAt(pair.B, ms);
-  return a && b ? relativeToScene(ricOf(a, b)) : null;
+// tleCentre / tleOther: which TLE to use for each (leave out to use the nearest one).
+function relativePointAt(ms, tleCentre = null, tleOther = null) {
+  const c = stateAt(pair[centre], ms, tleCentre), o = positionAt(pair[otherSlot()], ms, tleOther);
+  return c && o ? relativeToScene(ricOf(c, o)) : null;
 }
 
-// Three labelled axis lines through A, shown only in the relative view.
+// Long, labelled axis lines through A (the same size as the original page's), shown only in the relative view.
 const relativeAxes = new THREE.Group();
 relativeAxes.visible = false;
 scene.add(relativeAxes);
 {
-  const material = new THREE.LineBasicMaterial({ color: 0xbbbbbb });
+  const material = new THREE.LineBasicMaterial({ color: 0xcccccc });
   const axis = (from, to) => relativeAxes.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([from, to]), material));
-  axis(new THREE.Vector3(-1.5, 0, 0), new THREE.Vector3(1.5, 0, 0));
-  axis(new THREE.Vector3(0, -1.5, 0), new THREE.Vector3(0, 1.5, 0));
-  axis(new THREE.Vector3(0, 0, -1.5), new THREE.Vector3(0, 0, 1.5));
+  axis(new THREE.Vector3(-14, 0, 0), new THREE.Vector3(14, 0, 0));
+  axis(new THREE.Vector3(0, -5, 0), new THREE.Vector3(0, 5, 0));
+  axis(new THREE.Vector3(0, 0, -14), new THREE.Vector3(0, 0, 14));
   const axisLabel = (text, position) => {
     const canvas = document.createElement("canvas");
     canvas.width = 512; canvas.height = 96;
     const ctx = canvas.getContext("2d");
     ctx.font = "600 34px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-    ctx.fillStyle = "#777"; ctx.textAlign = "center";
+    ctx.fillStyle = "#666"; ctx.textAlign = "center";
     ctx.fillText(text, 256, 57);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
     sprite.position.copy(position);
-    sprite.scale.set(0.8, 0.15, 1);
+    sprite.scale.set(3.8, 0.7, 1);
+    sprite.renderOrder = 20;
     relativeAxes.add(sprite);
   };
-  axisLabel("along-track →", new THREE.Vector3(1.5, 0.1, 0));
-  axisLabel("cross-track ↑", new THREE.Vector3(0, 1.62, 0));
-  axisLabel("radial (up) ↗", new THREE.Vector3(0, 0.1, 1.5));
+  axisLabel("I  ·  along-track", new THREE.Vector3(13.2, 0.45, 0));
+  axisLabel("C  ·  cross-track", new THREE.Vector3(0, 4.7, 0));
+  axisLabel("R  ·  radial", new THREE.Vector3(0, 0.45, 12.5));
 }
 
-// In the relative view, move the dots and B's line (B's path around A over the last orbit).
+// B's fading trail: one line whose colour goes from white (4 hours ago, blending into the
+// background) to grey (now), so older positions fade away.
+const relativeTrail = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true }));
+relativeTrail.visible = false;
+scene.add(relativeTrail);
+
+// Put Earth in the right place, size and orientation for the relative view:
+// centred straight "down" from A, at 1 unit = 1,000 km, turned to match A's directions.
+function placeEarthRelative(stateA) {
+  const { R, I, C } = ricAxes(stateA);
+  const toScene = v => new THREE.Vector3(v[0], v[2], -v[1]);   // same axis swap as eciToScene
+  const turn = new THREE.Matrix4().makeBasis(toScene(I), toScene(C), toScene(R)).transpose();
+  const centre = relativeToScene(ricOf(stateA, [0, 0, 0]));   // Earth's centre, seen from A
+  const size = EARTH_RADIUS_KM / RELATIVE_SCALE_KM;
+  earthGroup.matrix.makeTranslation(centre.x, centre.y, centre.z)
+    .multiply(turn)
+    .multiply(new THREE.Matrix4().makeRotationY(-sgp4.gstime(new Date(currentMs))))
+    .multiply(new THREE.Matrix4().makeScale(size, size, size));
+}
+
+// In the relative view: A at the centre, B at its relative position, B's fading trail, Earth below.
 function drawRelative() {
-  dots.A.visible = true;
-  dots.A.position.set(0, 0, 0);
+  const stateCentre = stateAt(pair[centre], currentMs);
+  if (!stateCentre) return;
+  placeEarthRelative(stateCentre);
+  const other = otherSlot();
+  dots[centre].visible = true;
+  dots[centre].position.set(0, 0, 0);
   const now = relativePointAt(currentMs);
-  dots.B.visible = now !== null;
-  if (now) dots.B.position.copy(now);
-  const lib = library[pair.A];
-  const periodMs = (2 * Math.PI / satrecFor(lib, nearestTleIndex(lib, currentMs)).no) * MINUTE_MS;
-  const points = [];
-  for (let i = 0; i <= TRAIL_POINTS; i++) {
-    const p = relativePointAt(currentMs - periodMs * (1 - i / TRAIL_POINTS));
-    if (p) points.push(p);
+  dots[other].visible = now !== null;
+  if (now) dots[other].position.copy(now);
+
+  // Draw the whole trail from the TLEs in use right now, so it doesn't kink wherever the
+  // nearest TLE would change partway along it (the same trick the orbit lines use)
+  const tleCentre = nearestTleIndex(library[pair[centre]], currentMs);
+  const tleOther = nearestTleIndex(library[pair[other]], currentMs);
+  const points = [], colors = [];
+  const faded = new THREE.Color(0xffffff), recent = new THREE.Color(0x777777);
+  for (let i = 0; i <= RELATIVE_TRAIL_POINTS; i++) {
+    const fraction = i / RELATIVE_TRAIL_POINTS;            // 0 = 4 hours ago, 1 = now
+        const p = relativePointAt(currentMs - RELATIVE_TRAIL_HOURS * 60 * MINUTE_MS * (1 - fraction), tleCentre, tleOther);
+    if (!p) continue;
+    points.push(p);
+    const color = faded.clone().lerp(recent, fraction ** 1.7);
+    colors.push(color.r, color.g, color.b);
   }
-  trails.B.geometry.dispose();
-  trails.B.geometry = new THREE.BufferGeometry().setFromPoints(points);
-  trails.A.geometry.dispose();
-  trails.A.geometry = new THREE.BufferGeometry();       // A doesn't move in this view
+  relativeTrail.geometry.dispose();
+  relativeTrail.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  relativeTrail.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+
+  // Each satellite's grey orbit line (its last full orbit, as in Full Earth), redrawn as seen
+  // from the centre satellite, so it lines up with the Earth and dots in this view.
+  for (const slot of ["A", "B"]) {
+    const lib = library[pair[slot]], tleIndex = nearestTleIndex(lib, currentMs);
+    const periodMs = (2 * Math.PI / satrecFor(lib, tleIndex).no) * MINUTE_MS;   // one orbit, in ms
+    const orbit = [];
+        // Up close, straight segments 250 km long look wobbly, so use more points, packed
+    // closely near "now" (where the satellites are) and further apart around the far side.
+        // Up close, straight segments 250 km long look wobbly, so use more points, packed
+    // closely near "now" (where the satellites are) and further apart around the far side.
+    for (let i = 0; i <= RELATIVE_ORBIT_POINTS; i++) {
+      const fractionAgo = (1 - i / RELATIVE_ORBIT_POINTS) ** 3;   // 1 = one orbit ago, 0 = now
+      const r = positionAt(pair[slot], currentMs - periodMs * fractionAgo, tleIndex);
+      if (r) orbit.push(relativeToScene(ricOf(stateCentre, r)));
+    }
+
+    trails[slot].geometry.dispose();
+    trails[slot].geometry = new THREE.BufferGeometry().setFromPoints(orbit);
+  }
 }
 
 // Switch between the Full Earth and Relative motion views.
-function setView(next) {
+// fitBoth = true (used by "View closest approach") also zooms so BOTH satellites are in the frame.
+function setView(next, nextCentre = centre, fitBoth = false) {
+  if (!pair.A || !pair.B) next = "earth";                 // the relative view needs two satellites
   view = next;
-  earthGroup.visible = view === "earth";
-  relativeAxes.visible = view === "relative";
-  $("earthView").classList.toggle("activeViewSwitch", view === "earth");
-  $("relativeView").classList.toggle("activeViewSwitch", view === "relative");
-  if (view === "relative") {
-    relativeScaleKm = Math.max(1, separationAt(currentMs) ?? 1000);   // so B starts about 1 unit from A
-    $("viewNote").textContent = `${slotName("A")} is at the centre; the axes reach ±${formatKm(1.5 * relativeScaleKm)}.`;
-  } else {
-    $("viewNote").textContent = "";
-  }
-  if (pair.A && pair.B) updateScene();
-  moveCameraSmoothly();
-}
+  centre = nextCentre;
+  const relative = view === "relative";
+  $("centreSwitch").hidden = !relative;                   // "Centre on" buttons only in the relative view
+  $("centreA").classList.toggle("activeViewSwitch", centre === "A");
+  $("centreB").classList.toggle("activeViewSwitch", centre === "B");
+  earthGroup.matrixAutoUpdate = !relative;                // in the relative view, placeEarthRelative sets Earth's position
+  relativeAxes.visible = relative && showAxes;            // axes only if switched on
+  $("axesBtn").hidden = !relative;                        // the axes button only appears in the relative view
+  relativeTrail.visible = relative;
+  camera.fov = relative ? 35 : 15.5;                       // a wider lens up close, as in the original
+  camera.updateProjectionMatrix();
+  $("earthView").classList.toggle("activeViewSwitch", !relative);
+  $("relativeView").classList.toggle("activeViewSwitch", relative);
+  $("viewNote").textContent = relative
+    ? `${slotName(centre)} is at the centre and Earth is drawn to scale below it. The fading line is ${slotName(otherSlot())}'s path over the last ${RELATIVE_TRAIL_HOURS} hours.`
+    : "";
 
-// Look at the point halfway between A (at the centre) and B, from a slight angle.
-function relativeFraming() {
-  const target = dots.B.position.clone().multiplyScalar(0.5);
+  if (pair.A || pair.B) updateScene();
+  // Jump the camera straight into place (as the original does) instead of gliding
+  cameraTween = null;
+  const framing = relative ? relativeFraming(fitBoth) : fullEarthFraming();
+  camera.position.copy(framing.position);
+  controls.target.copy(framing.target);
+
+ // Dot size in the relative view: the same on-screen size as the original page, which drew
+  // 0.028-unit dots seen from about 0.48 units away (0.028 / 0.48 = about 5.8% of the camera's distance).
+  // Scaling with the camera's distance keeps them that size on screen however far the camera is.
+  const cameraDistance = framing.position.distanceTo(framing.target);
+  // In the closest-approach view (zoomed out to show the whole loop), dots 2% of the camera's
+  // distance: big enough to see clearly. When the satellites are very close they may overlap
+  // a little; zoom in (+) to see the gap between them.
+  const size = !relative ? 0.055
+    : fitBoth ? 0.02 * cameraDistance
+    : (0.028 / 0.48) * cameraDistance;
+
+  // Name labels: a readable text size in the relative view (2.2% of the camera's distance), not
+  // the dots' size, and nudged further right so the text clears the bigger dots.
+  const labelSize = !relative ? 0.055 : fitBoth ? 0.016 * cameraDistance : 0.022 * cameraDistance;
+  for (const slot of ["A", "B"]) {
+    dots[slot].scale.set(size, size, 1);
+    labels[slot].scale.set(labelSize * 5.33, labelSize, 1);   // the label image is 5.33 times wider than it is tall
+    labels[slot].center.x = relative ? -0.18 : -0.08;
+  }
+}
+// Always put the centre satellite in the middle of the picture.
+// Normally: view from the original page's angle, 500 km away.
+// fitBoth (for "View closest approach"): look from the side of the line between the two
+// satellites (so one can't hide behind the other), and stand far enough back that the other
+// satellite sits comfortably inside the frame, however close they are.
+function relativeFraming(fitBoth = false) {
+  const centreOfFrame = new THREE.Vector3(0, 0, 0);       // the centre satellite is always at (0, 0, 0)
+  if (!fitBoth) {
+    const direction = new THREE.Vector3(1, 0.62, 1.08).normalize();
+    return { position: direction.multiplyScalar(RELATIVE_VIEW_DISTANCE), target: centreOfFrame };
+  }
+    // How far the other satellite's path reaches from the centre satellite over the last orbit
+  // (one loop of the fading path; the trail has one point per minute, newest last)
+  const lib = library[pair[centre]];
+  const orbitMinutes = Math.round(2 * Math.PI / satrecFor(lib, nearestTleIndex(lib, currentMs)).no);
+  let reach = dots[otherSlot()].position.length();
+  const trail = relativeTrail.geometry.attributes.position;
+  for (let i = Math.max(0, trail.count - 1 - orbitMinutes); i < trail.count; i++) {
+    reach = Math.max(reach, Math.hypot(trail.getX(i), trail.getY(i), trail.getZ(i)));
+  }
+  // Look from the original page's angle, far enough back that all of it fits, about 70% of the
+  // way from the middle to the edge. (The camera sees tan(fov/2) units of height either side of
+  // the middle for every unit of distance away.)
   const direction = new THREE.Vector3(1, 0.62, 1.08).normalize();
-  return { position: target.clone().add(direction.multiplyScalar(8)), target };
+  const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const distance = Math.max(reach, 0.0005) / (0.7 * halfHeightPerUnit);
+  return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
 
 
@@ -931,6 +1058,16 @@ $("loadAsB").addEventListener("click", () => {
 // Full Earth / Relative motion switch
 $("earthView").addEventListener("click", () => setView("earth"));
 $("relativeView").addEventListener("click", () => setView("relative"));
+$("centreA").addEventListener("click", () => setView("relative", "A"));
+$("centreB").addEventListener("click", () => setView("relative", "B"));
+// Show or hide the direction axes in the relative view
+$("axesBtn").addEventListener("click", () => {
+  showAxes = !showAxes;                                   // flip on <-> off
+  $("axesBtn").classList.toggle("isOn", showAxes);       // dark when on
+  relativeAxes.visible = view === "relative" && showAxes;
+});
+
+
 
 
 // Jump to the closest approach, in the satellite-centred view
@@ -939,7 +1076,7 @@ $("caViewBtn").addEventListener("click", () => {
   playing = false;                                       // pause, so it stays on that moment
   $("playBtn").innerHTML = '<span class="playIcon">▶</span>';
   currentMs = closest.ms;
-  setView("relative");
+  setView("relative", centre, true);                     // true = zoom so both satellites are in the frame
 });
 
 $("playBtn").addEventListener("click", () => {

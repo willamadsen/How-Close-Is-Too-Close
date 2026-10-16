@@ -71,6 +71,11 @@
         <button id="earthView" class="viewSwitchOption activeViewSwitch" type="button">Full Earth</button>
         <button id="relativeView" class="viewSwitchOption" type="button">Relative motion</button>
       </div>
+            <!-- Relative motion only: which satellite sits at the centre -->
+      <div id="centreSwitch" class="viewSwitch centreSwitch" aria-label="Centre the relative view on" hidden>
+        <button id="centreA" class="viewSwitchOption activeViewSwitch" type="button"><span class="sourceDot slotA"></span> <span id="centreNameA">Satellite A</span></button>
+        <button id="centreB" class="viewSwitchOption" type="button"><span class="sourceDot slotB"></span> <span id="centreNameB">Satellite B</span></button>
+      </div>
       <div id="viewNote" class="methodNote"></div>
       <div class="statsGrid">
         <div class="statBlock"><div id="rangeStat" class="statNumber">—</div><div class="statLabel">Distance apart</div></div>
@@ -113,6 +118,8 @@
     <button id="zoomInBtn" class="cameraBtn" title="Zoom in">+</button>
     <button id="zoomOutBtn" class="cameraBtn" title="Zoom out">−</button>
     <button id="resetBtn" class="cameraBtn" title="Reset view">⌂</button>
+    <!-- Relative motion only: show or hide the radial / along-track / cross-track axes -->
+    <button id="axesBtn" class="cameraBtn" title="Show or hide direction axes (radial, along-track, cross-track)" hidden>✛</button>
   </div>
   <div id="brand"><img src="assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
 
@@ -144,6 +151,10 @@
     #lookupResult { white-space: pre-line; }
     /* .lookupRow sets display:flex, which would override "hidden", so say explicitly that hidden means hidden */
     #lookupActions[hidden] { display: none; }
+        .centreSwitch { margin-top:6px; }
+    .centreSwitch[hidden] { display:none; }   /* .viewSwitch sets display:flex, which would override "hidden" */
+    .cameraBtn.isOn { color:#fff; background:#555; }   /* the axes button when the axes are showing */
+    .centreSwitch .viewSwitchOption { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
     #lookupActions { margin-top: 6px; }
     #lookupActions button { display:inline-flex; align-items:center; gap:6px; }
         .closestApproach { margin-top:12px; padding-top:10px; border-top:1px solid #eee; }
