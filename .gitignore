@@ -17,3 +17,6 @@ __pycache__/
 
 # TLE library built from /Data/ by Code/build_tle_library.py (not published until cleared)
 /Viz/data/tles/
+
+# Full CelesTrak catalog downloaded by Viz/satcat_ret.py (rebuild with build_satcat_json.py)
+/Viz/full_satcat.csv
