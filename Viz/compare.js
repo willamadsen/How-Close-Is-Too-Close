@@ -32,6 +32,8 @@ const CHART_MINUTES = 120;         // The separation chart shows the last two ho
 const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amber.
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
+const DOT_SCREEN_SIZE = 0.022       // 0.022 = 2.2% of the screen height at any given moment
+const LABEL_SCREEN_SIZE = 0.03      // name labels are 3% of the screen height at any given moment
 
 // Each "slot" (A or B) gets its own colors, no matter which satellite is in it.
 const SLOTS = {
@@ -269,7 +271,7 @@ function dotTexture(fillColor) {
 const dots = {};    // dots.A and dots.B
 const trails = {};  // trails.A and trails.B
 for (const slot of ["A", "B"]) {
-  const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(SLOTS[slot].dot) }));
+  const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(SLOTS[slot].dot), sizeAttenuation: false })); // sizeAttenuation: false tells three.js not to shrink the sprite as it gets further away
   dot.scale.set(0.055, 0.055, 1);
   dot.renderOrder = 8;
   scene.add(dot);
@@ -285,7 +287,7 @@ for (const slot of ["A", "B"]) {
 // Text is drawn onto a small image (a "canvas"), which becomes the label's texture.
 const labels = {};  // labels.A and labels.B
 for (const slot of ["A", "B"]) {
-  const label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }));
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, sizeAttenuation: false }));
   // Where the label sits next to its dot: A's just above and to the right, B's just below and to the
   // right, so the two names don't overlap when the satellites are close together.
   label.center.set(-0.08, slot === "A" ? -0.1 : 1.1);
@@ -755,7 +757,6 @@ const RELATIVE_SCALE_KM = 1000;      // in the relative view, 1 scene unit = 1,0
 const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
 const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
 const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
-const RELATIVE_ORBIT_POINTS = 600;  // points in each grey orbit line in the relative view
 
 // A's own directions (each an arrow of length 1, in Earth-centred coordinates)
 function ricAxes(stateA) {
@@ -846,27 +847,7 @@ function drawRelative() {
   relativeTrail.geometry.dispose();
   relativeTrail.geometry = new THREE.BufferGeometry().setFromPoints(points);
   relativeTrail.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-
-  // Each satellite's grey orbit line (its last full orbit, as in Full Earth), redrawn as seen
-  // from the centre satellite, so it lines up with the Earth and dots in this view.
-  for (const slot of ["A", "B"]) {
-    const lib = library[pair[slot]], tleIndex = nearestTleIndex(lib, currentMs);
-    const periodMs = (2 * Math.PI / satrecFor(lib, tleIndex).no) * MINUTE_MS;   // one orbit, in ms
-    const orbit = [];
-        // Up close, straight segments 250 km long look wobbly, so use more points, packed
-    // closely near "now" (where the satellites are) and further apart around the far side.
-        // Up close, straight segments 250 km long look wobbly, so use more points, packed
-    // closely near "now" (where the satellites are) and further apart around the far side.
-    for (let i = 0; i <= RELATIVE_ORBIT_POINTS; i++) {
-      const fractionAgo = (1 - i / RELATIVE_ORBIT_POINTS) ** 3;   // 1 = one orbit ago, 0 = now
-      const r = positionAt(pair[slot], currentMs - periodMs * fractionAgo, tleIndex);
-      if (r) orbit.push(relativeToScene(ricOf(stateCentre, r)));
-    }
-
-    trails[slot].geometry.dispose();
-    trails[slot].geometry = new THREE.BufferGeometry().setFromPoints(orbit);
-  }
-}
+} // closes drawRelative
 
 // Switch between the Full Earth and Relative motion views.
 // fitBoth = true (used by "View closest approach") also zooms so BOTH satellites are in the frame.
@@ -882,6 +863,8 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   relativeAxes.visible = relative && showAxes;            // axes only if switched on
   $("axesBtn").hidden = !relative;                        // the axes button only appears in the relative view
   relativeTrail.visible = relative;
+  trails.A.visible =!relative; // visible is a true false setting and ! means not, so we are saying the trails are not visible in the relative view and visible in the full earth view 
+  trails.B.visible = !relative;
   camera.fov = relative ? 35 : 15.5;                       // a wider lens up close, as in the original
   camera.updateProjectionMatrix();
   $("earthView").classList.toggle("activeViewSwitch", !relative);
@@ -897,24 +880,15 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   camera.position.copy(framing.position);
   controls.target.copy(framing.target);
 
- // Dot size in the relative view: the same on-screen size as the original page, which drew
-  // 0.028-unit dots seen from about 0.48 units away (0.028 / 0.48 = about 5.8% of the camera's distance).
-  // Scaling with the camera's distance keeps them that size on screen however far the camera is.
-  const cameraDistance = framing.position.distanceTo(framing.target);
-  // In the closest-approach view (zoomed out to show the whole loop), dots 2% of the camera's
-  // distance: big enough to see clearly. When the satellites are very close they may overlap
-  // a little; zoom in (+) to see the gap between them.
-  const size = !relative ? 0.055
-    : fitBoth ? 0.004 * cameraDistance
-    : (0.028 / 0.48) * cameraDistance;
-
-  // Name labels: a readable text size in the relative view (2.2% of the camera's distance), not
-  // the dots' size, and nudged further right so the text clears the bigger dots.
-  const labelSize = !relative ? 0.055 : fitBoth ? 0.016 * cameraDistance : 0.022 * cameraDistance;
-  for (const slot of ["A", "B"]) {
-    dots[slot].scale.set(size, size, 1);
-    labels[slot].scale.set(labelSize * 5.33, labelSize, 1);   // the label image is 5.33 times wider than it is tall
-    labels[slot].center.x = relative ? -0.18 : -0.08;
+// Dots and name labels stay the same size on screen, independent of how zoomed in the camera view is.
+// sizeAttenuation: false (where they are made as sprites) measures their size on the screen and not in space
+// Multiplying by the lens width makes them the same size in both views, whose lenses differ
+const lens = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)); // Full Earth uses a 15.5 degree narrow lens and the relative view uses a 35 degree wider one. The wider lens fits more onto the screen, so everything looks smaller. This finds out how wide each lens is, and degToRad converts degrees into the unit JS uses. Multiplying by lens cancels out the difference so dots will be the same size in both views 
+const dotsize = DOT_SCREEN_SIZE * lens; // sets dotsize to what we established earlier 
+const labelSize = LABEL_SCREEN_SIZE * lens;
+for (const slot of ["A", "B"]) { // for loop applies the sizes to both A and B
+  dots[slot].scale.set(dotsize, dotsize, 1);
+  labels[slot].scale.set(labelSize * 5.33, labelSize, 1); // the label image is 5.33 times wider than it is tall
   }
 }
 // Always put the centre satellite in the middle of the picture.
