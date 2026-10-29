@@ -102,15 +102,25 @@
     </section>
 
     <!-- Play button, speed menu and time slider, pinned to the bottom of the panel -->
-    <section class="playbackSection">
-      <button id="playBtn" class="miniControl" title="Play / pause"><span class="playIcon">▶</span></button>
-      <select id="speed" class="speedSelect" title="Playback speed">
-        <option value="60">1 min/s</option>
-        <option value="600" selected>10 min/s</option>
-        <option value="3600">1 hr/s</option>
-        <option value="86400">1 day/s</option>
-      </select>
-      <input id="timelineSlider" type="range" min="0" max="1" value="0" step="60000">
+        <section class="playbackSection">
+      <div class="timeRow">
+        <span id="sliderStart" class="sliderDate">—</span>
+        <div class="sliderWrap">
+          <input id="timelineSlider" type="range" min="0" max="1" value="0" step="60000">
+          <div id="sliderTip" class="sliderTip" hidden></div>
+        </div>
+        <span id="sliderEnd" class="sliderDate">—</span>
+      </div>
+      <div class="controlRow">
+        <button id="playBtn" class="miniControl" title="Play / pause"><span class="playIcon">▶</span></button>
+        <span id="sliderNow" class="sliderNow">—</span>
+        <select id="speed" class="speedSelect" title="Playback speed">
+          <option value="60">1 min/s</option>
+          <option value="600" selected>10 min/s</option>
+          <option value="3600">1 hr/s</option>
+          <option value="86400">1 day/s</option>
+        </select>
+      </div>
     </section>
   </aside>
 
@@ -167,7 +177,14 @@
         .closestApproach { margin-top:12px; padding-top:10px; border-top:1px solid #eee; }
     .caViewBtn { width:100%; height:32px; margin-top:8px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
     .caViewBtn:hover { background:#f7f7f7; }
-
+        .sliderWrap { position:relative; flex:1; min-width:0; display:flex; }
+    .sliderWrap #timelineSlider { width:100%; }
+    .sliderDate { font-size:10px; color:#777; white-space:nowrap; }
+    .sliderTip { position:absolute; bottom:calc(100% + 6px); transform:translateX(-50%); padding:3px 6px; border-radius:5px; background:#333; color:#fff; font-size:11px; white-space:nowrap; pointer-events:none; }
+    .sliderTip[hidden] { display:none; }
+        .playbackSection { flex-direction:column; align-items:stretch; gap:6px; }
+    .timeRow, .controlRow { display:flex; align-items:center; gap:8px; }
+        .sliderNow { flex:1; font-size:11px; color:#555; font-variant-numeric:tabular-nums; }
   </style>
 
   <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->

@@ -362,6 +362,7 @@ function updateScene() {
   const km = positions.A && positions.B ? distanceKm(positions.A, positions.B) : null;
   $("rangeStat").textContent = km === null ? "—" : `${Math.round(km).toLocaleString()} km`;
   $("timeDisplay").textContent = formatTime(currentMs).replace(" UTC", "");
+  $("sliderNow").textContent = formatTime(currentMs);
   $("timelineSlider").value = currentMs;
 
   // Spin Earth to the right angle for this moment (Greenwich sidereal time).
@@ -560,7 +561,7 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   }
   applyLimits(requestedStart, requestedEnd);
   lastIdentityKey = "";
-    setView(view);                                         // redraw and re-frame in the current view
+    setView(preferredView);                                         // redraw and re-frame in the current view
 }
 
 // Set the date pickers' allowed range from the TLE data, then set the window
@@ -594,6 +595,7 @@ function clearScene() {
   }
   $("rangeStat").textContent = "—";                     // distance
   $("timeDisplay").textContent = "—";                   // time
+  $("sliderNow").textContent = "—";
   $("identity").innerHTML = "";                          // "Now modeling" panel
   lastIdentityKey = "";                                  // make sure the panel rebuilds next time
     closest = null;
@@ -609,7 +611,9 @@ function setWindow(newStart, newEnd) {
   $("startTime").value = toInputValue(startMs);
   $("endTime").value = toInputValue(endMs);
   $("timelineSlider").min = startMs;
-   $("timelineSlider").max = endMs;
+  $("timelineSlider").max = endMs;
+  $("sliderStart").textContent = formatDate(startMs);
+  $("sliderEnd").textContent = formatDate(endMs);
   updateScene();
   updateClosestApproach();
 }
@@ -750,6 +754,7 @@ const formatTimeSeconds = ms => new Intl.DateTimeFormat("en-US", { year: "numeri
 // Earth is drawn to scale underneath, and B leaves a fading trail of the last 4 hours.
 // ---------------------------------------------------------------------------
 let view = "earth";                  // "earth" (Full Earth) or "relative" (Relative motion)
+let preferredView = "relative";      // the view to open whenever a pair is loaded: Relative motion at first, then whichever the user last clicked
 let showAxes = false;                // direction axes on or off (the round button under the home button)
 let centre = "A";                    // which satellite sits at the centre of the relative view: "A" or "B"
 const otherSlot = () => centre === "A" ? "B" : "A";   // the satellite that moves around it
@@ -1016,8 +1021,8 @@ $("loadAsB").addEventListener("click", () => {
 });
 
 // Full Earth / Relative motion switch
-$("earthView").addEventListener("click", () => setView("earth"));
-$("relativeView").addEventListener("click", () => setView("relative"));
+$("earthView").addEventListener("click", () => { preferredView = "earth"; setView("earth"); });
+$("relativeView").addEventListener("click", () => { preferredView = "relative"; setView("relative"); });
 $("centreA").addEventListener("click", () => setView("relative", "A"));
 $("centreB").addEventListener("click", () => setView("relative", "B"));
 // Show or hide the direction axes in the relative view
@@ -1043,10 +1048,28 @@ $("playBtn").addEventListener("click", () => {
   playing = !playing;   // "!" means "not", so this flips true <-> false
   $("playBtn").innerHTML = playing ? "Ⅱ" : '<span class="playIcon">▶</span>';
 });
+// The time bar's pop-up: the exact date and time at a point along the slider.
+// x is how far along the slider that point is, in pixels from its left edge.
+function showSliderTip(ms, x) {
+  $("sliderTip").textContent = formatTime(ms);
+  $("sliderTip").style.left = `${x}px`;
+  $("sliderTip").hidden = false;
+}
+
+// Dragging or clicking the slider: jump to that moment and show it in the pop-up
 $("timelineSlider").addEventListener("input", event => {
   currentMs = Number(event.target.value);
   updateScene();
+  const fraction = (currentMs - startMs) / (endMs - startMs);
+  showSliderTip(currentMs, fraction * event.target.clientWidth);
 });
+
+// Hovering: show the date under the mouse, without moving the time
+$("timelineSlider").addEventListener("pointermove", event => {
+  const fraction = Math.min(1, Math.max(0, event.offsetX / event.target.clientWidth));
+  showSliderTip(startMs + fraction * (endMs - startMs), event.offsetX);
+});
+$("timelineSlider").addEventListener("pointerleave", () => { $("sliderTip").hidden = true; });
 $("zoomInBtn").addEventListener("click", () => { cameraTween = null; camera.position.lerp(controls.target, 0.2); });
 $("zoomOutBtn").addEventListener("click", () => { cameraTween = null; camera.position.sub(controls.target).multiplyScalar(1.25).add(controls.target); });
 $("resetBtn").addEventListener("click", moveCameraSmoothly);
