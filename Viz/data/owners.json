@@ -1,0 +1,761 @@
+{
+ "AB": {
+  "name": "Arab Satellite Communications Organization",
+  "flags": []
+ },
+ "ABS": {
+  "name": "Asia Broadcast Satellite",
+  "flags": []
+ },
+ "AC": {
+  "name": "Asia Satellite Telecommunications Company (ASIASAT)",
+  "flags": []
+ },
+ "ALG": {
+  "name": "Algeria",
+  "flags": [
+   "dz"
+  ]
+ },
+ "ANG": {
+  "name": "Angola",
+  "flags": [
+   "ao"
+  ]
+ },
+ "ARGN": {
+  "name": "Argentina",
+  "flags": [
+   "ar"
+  ]
+ },
+ "ARM": {
+  "name": "Republic of Armenia",
+  "flags": [
+   "am"
+  ]
+ },
+ "ASRA": {
+  "name": "Austria",
+  "flags": [
+   "at"
+  ]
+ },
+ "AUS": {
+  "name": "Australia",
+  "flags": [
+   "au"
+  ]
+ },
+ "AZER": {
+  "name": "Azerbaijan",
+  "flags": [
+   "az"
+  ]
+ },
+ "BEL": {
+  "name": "Belgium",
+  "flags": [
+   "be"
+  ]
+ },
+ "BELA": {
+  "name": "Belarus",
+  "flags": [
+   "by"
+  ]
+ },
+ "BERM": {
+  "name": "Bermuda",
+  "flags": [
+   "bm"
+  ]
+ },
+ "BGD": {
+  "name": "Peoples Republic of Bangladesh",
+  "flags": [
+   "bd"
+  ]
+ },
+ "BHR": {
+  "name": "The Kingdom of Bahrain",
+  "flags": [
+   "bh"
+  ]
+ },
+ "BHUT": {
+  "name": "The Kingdom of Bhutan",
+  "flags": [
+   "bt"
+  ]
+ },
+ "BOL": {
+  "name": "Bolivia",
+  "flags": [
+   "bo"
+  ]
+ },
+ "BRAZ": {
+  "name": "Brazil",
+  "flags": [
+   "br"
+  ]
+ },
+ "BUL": {
+  "name": "Bulgaria",
+  "flags": [
+   "bg"
+  ]
+ },
+ "BWA": {
+  "name": "Republic of Botswana",
+  "flags": [
+   "bw"
+  ]
+ },
+ "CA": {
+  "name": "Canada",
+  "flags": [
+   "ca"
+  ]
+ },
+ "CHBZ": {
+  "name": "China/Brazil",
+  "flags": [
+   "cn",
+   "br"
+  ]
+ },
+ "CHTU": {
+  "name": "China/Türkiye",
+  "flags": [
+   "cn",
+   "tr"
+  ]
+ },
+ "CHLE": {
+  "name": "Chile",
+  "flags": [
+   "cl"
+  ]
+ },
+ "CIS": {
+  "name": "Russia (CIS)",
+  "flags": [
+   "ru"
+  ]
+ },
+ "COL": {
+  "name": "Colombia",
+  "flags": [
+   "co"
+  ]
+ },
+ "CRI": {
+  "name": "Republic of Costa Rica",
+  "flags": [
+   "cr"
+  ]
+ },
+ "CZCH": {
+  "name": "Czech Republic (former Czechoslovakia)",
+  "flags": [
+   "cz"
+  ]
+ },
+ "DEN": {
+  "name": "Denmark",
+  "flags": [
+   "dk"
+  ]
+ },
+ "DJI": {
+  "name": "Republic of Djibouti",
+  "flags": [
+   "dj"
+  ]
+ },
+ "ECU": {
+  "name": "Ecuador",
+  "flags": [
+   "ec"
+  ]
+ },
+ "EGYP": {
+  "name": "Egypt",
+  "flags": [
+   "eg"
+  ]
+ },
+ "ESA": {
+  "name": "European Space Agency",
+  "flags": []
+ },
+ "ESRO": {
+  "name": "European Space Research Organization",
+  "flags": []
+ },
+ "EST": {
+  "name": "Estonia",
+  "flags": [
+   "ee"
+  ]
+ },
+ "ETH": {
+  "name": "Ethiopia",
+  "flags": [
+   "et"
+  ]
+ },
+ "EUME": {
+  "name": "European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)",
+  "flags": []
+ },
+ "EUTE": {
+  "name": "European Telecommunications Satellite Organization (EUTELSAT)",
+  "flags": []
+ },
+ "FGER": {
+  "name": "France/Germany",
+  "flags": [
+   "fr",
+   "de"
+  ]
+ },
+ "FIN": {
+  "name": "Finland",
+  "flags": [
+   "fi"
+  ]
+ },
+ "FR": {
+  "name": "France",
+  "flags": [
+   "fr"
+  ]
+ },
+ "FRIT": {
+  "name": "France/Italy",
+  "flags": [
+   "fr",
+   "it"
+  ]
+ },
+ "GER": {
+  "name": "Germany",
+  "flags": [
+   "de"
+  ]
+ },
+ "GHA": {
+  "name": "Republic of Ghana",
+  "flags": [
+   "gh"
+  ]
+ },
+ "GLOB": {
+  "name": "Globalstar",
+  "flags": []
+ },
+ "GREC": {
+  "name": "Greece",
+  "flags": [
+   "gr"
+  ]
+ },
+ "GRSA": {
+  "name": "Greece/Saudi Arabia",
+  "flags": [
+   "gr",
+   "sa"
+  ]
+ },
+ "GUAT": {
+  "name": "Guatemala",
+  "flags": [
+   "gt"
+  ]
+ },
+ "HRV": {
+  "name": "Republic of Croatia",
+  "flags": [
+   "hr"
+  ]
+ },
+ "HUN": {
+  "name": "Hungary",
+  "flags": [
+   "hu"
+  ]
+ },
+ "IM": {
+  "name": "International Mobile Satellite Organization (INMARSAT)",
+  "flags": []
+ },
+ "IND": {
+  "name": "India",
+  "flags": [
+   "in"
+  ]
+ },
+ "INDO": {
+  "name": "Indonesia",
+  "flags": [
+   "id"
+  ]
+ },
+ "IRAN": {
+  "name": "Iran",
+  "flags": [
+   "ir"
+  ]
+ },
+ "IRAQ": {
+  "name": "Iraq",
+  "flags": [
+   "iq"
+  ]
+ },
+ "IRID": {
+  "name": "Iridium",
+  "flags": []
+ },
+ "IRL": {
+  "name": "Ireland",
+  "flags": [
+   "ie"
+  ]
+ },
+ "ISRA": {
+  "name": "Israel",
+  "flags": [
+   "il"
+  ]
+ },
+ "ISRO": {
+  "name": "Indian Space Research Organisation",
+  "flags": [
+   "in"
+  ]
+ },
+ "ISS": {
+  "name": "International Space Station",
+  "flags": []
+ },
+ "IT": {
+  "name": "Italy",
+  "flags": [
+   "it"
+  ]
+ },
+ "ITSO": {
+  "name": "International Telecommunications Satellite Organization (INTELSAT)",
+  "flags": []
+ },
+ "JPN": {
+  "name": "Japan",
+  "flags": [
+   "jp"
+  ]
+ },
+ "KAZ": {
+  "name": "Kazakhstan",
+  "flags": [
+   "kz"
+  ]
+ },
+ "KEN": {
+  "name": "Republic of Kenya",
+  "flags": [
+   "ke"
+  ]
+ },
+ "LAOS": {
+  "name": "Laos",
+  "flags": [
+   "la"
+  ]
+ },
+ "LKA": {
+  "name": "Democratic Socialist Republic of Sri Lanka",
+  "flags": [
+   "lk"
+  ]
+ },
+ "LTU": {
+  "name": "Lithuania",
+  "flags": [
+   "lt"
+  ]
+ },
+ "LUXE": {
+  "name": "Luxembourg",
+  "flags": [
+   "lu"
+  ]
+ },
+ "MA": {
+  "name": "Morocco",
+  "flags": [
+   "ma"
+  ]
+ },
+ "MALA": {
+  "name": "Malaysia",
+  "flags": [
+   "my"
+  ]
+ },
+ "MCO": {
+  "name": "Principality of Monaco",
+  "flags": [
+   "mc"
+  ]
+ },
+ "MDA": {
+  "name": "Republic of Moldova",
+  "flags": [
+   "md"
+  ]
+ },
+ "MEX": {
+  "name": "Mexico",
+  "flags": [
+   "mx"
+  ]
+ },
+ "MMR": {
+  "name": "Republic of the Union of Myanmar",
+  "flags": [
+   "mm"
+  ]
+ },
+ "MNE": {
+  "name": "Montenegro",
+  "flags": [
+   "me"
+  ]
+ },
+ "MNG": {
+  "name": "Mongolia",
+  "flags": [
+   "mn"
+  ]
+ },
+ "MUS": {
+  "name": "Mauritius",
+  "flags": [
+   "mu"
+  ]
+ },
+ "NATO": {
+  "name": "North Atlantic Treaty Organization",
+  "flags": []
+ },
+ "NETH": {
+  "name": "Netherlands",
+  "flags": [
+   "nl"
+  ]
+ },
+ "NICO": {
+  "name": "New ICO",
+  "flags": []
+ },
+ "NIG": {
+  "name": "Nigeria",
+  "flags": [
+   "ng"
+  ]
+ },
+ "NKOR": {
+  "name": "Democratic People's Republic of Korea",
+  "flags": [
+   "kp"
+  ]
+ },
+ "NOR": {
+  "name": "Norway",
+  "flags": [
+   "no"
+  ]
+ },
+ "NPL": {
+  "name": "Federal Democratic Republic of Nepal",
+  "flags": [
+   "np"
+  ]
+ },
+ "NZ": {
+  "name": "New Zealand",
+  "flags": [
+   "nz"
+  ]
+ },
+ "O3B": {
+  "name": "O3b Networks",
+  "flags": []
+ },
+ "ORB": {
+  "name": "ORBCOMM",
+  "flags": []
+ },
+ "PAKI": {
+  "name": "Pakistan",
+  "flags": [
+   "pk"
+  ]
+ },
+ "PERU": {
+  "name": "Peru",
+  "flags": [
+   "pe"
+  ]
+ },
+ "POL": {
+  "name": "Poland",
+  "flags": [
+   "pl"
+  ]
+ },
+ "POR": {
+  "name": "Portugal",
+  "flags": [
+   "pt"
+  ]
+ },
+ "PRC": {
+  "name": "People's Republic of China",
+  "flags": [
+   "cn"
+  ]
+ },
+ "PRY": {
+  "name": "Republic of Paraguay",
+  "flags": [
+   "py"
+  ]
+ },
+ "PRES": {
+  "name": "People's Republic of China/European Space Agency",
+  "flags": [
+   "cn"
+  ]
+ },
+ "QAT": {
+  "name": "State of Qatar",
+  "flags": [
+   "qa"
+  ]
+ },
+ "RASC": {
+  "name": "RascomStar-QAF",
+  "flags": []
+ },
+ "ROC": {
+  "name": "Taiwan (Republic of China)",
+  "flags": [
+   "tw"
+  ]
+ },
+ "ROM": {
+  "name": "Romania",
+  "flags": [
+   "ro"
+  ]
+ },
+ "RP": {
+  "name": "Philippines (Republic of the Philippines)",
+  "flags": [
+   "ph"
+  ]
+ },
+ "RWA": {
+  "name": "Republic of Rwanda",
+  "flags": [
+   "rw"
+  ]
+ },
+ "SAFR": {
+  "name": "South Africa",
+  "flags": [
+   "za"
+  ]
+ },
+ "SAUD": {
+  "name": "Saudi Arabia",
+  "flags": [
+   "sa"
+  ]
+ },
+ "SDN": {
+  "name": "Republic of Sudan",
+  "flags": [
+   "sd"
+  ]
+ },
+ "SEAL": {
+  "name": "Sea Launch",
+  "flags": []
+ },
+ "SEN": {
+  "name": "Republic of Senegal",
+  "flags": [
+   "sn"
+  ]
+ },
+ "SES": {
+  "name": "SES",
+  "flags": []
+ },
+ "SGJP": {
+  "name": "Singapore/Japan",
+  "flags": [
+   "sg",
+   "jp"
+  ]
+ },
+ "SING": {
+  "name": "Singapore",
+  "flags": [
+   "sg"
+  ]
+ },
+ "SKOR": {
+  "name": "Republic of Korea",
+  "flags": [
+   "kr"
+  ]
+ },
+ "SLB": {
+  "name": "Solomon Islands",
+  "flags": [
+   "sb"
+  ]
+ },
+ "SPN": {
+  "name": "Spain",
+  "flags": [
+   "es"
+  ]
+ },
+ "STCT": {
+  "name": "Singapore/Taiwan",
+  "flags": [
+   "sg",
+   "tw"
+  ]
+ },
+ "SVN": {
+  "name": "Slovenia",
+  "flags": [
+   "si"
+  ]
+ },
+ "SWED": {
+  "name": "Sweden",
+  "flags": [
+   "se"
+  ]
+ },
+ "SWTZ": {
+  "name": "Switzerland",
+  "flags": [
+   "ch"
+  ]
+ },
+ "TBD": {
+  "name": "To Be Determined",
+  "flags": []
+ },
+ "THAI": {
+  "name": "Thailand",
+  "flags": [
+   "th"
+  ]
+ },
+ "TMMC": {
+  "name": "Turkmenistan/Monaco",
+  "flags": [
+   "tm",
+   "mc"
+  ]
+ },
+ "TUN": {
+  "name": "Republic of Tunisia",
+  "flags": [
+   "tn"
+  ]
+ },
+ "TURK": {
+  "name": "Türkiye",
+  "flags": [
+   "tr"
+  ]
+ },
+ "UAE": {
+  "name": "United Arab Emirates",
+  "flags": [
+   "ae"
+  ]
+ },
+ "UK": {
+  "name": "United Kingdom",
+  "flags": [
+   "gb"
+  ]
+ },
+ "UKR": {
+  "name": "Ukraine",
+  "flags": [
+   "ua"
+  ]
+ },
+ "UNK": {
+  "name": "Unknown",
+  "flags": []
+ },
+ "URY": {
+  "name": "Uruguay",
+  "flags": [
+   "uy"
+  ]
+ },
+ "US": {
+  "name": "United States",
+  "flags": [
+   "us"
+  ]
+ },
+ "USBZ": {
+  "name": "United States/Brazil",
+  "flags": [
+   "us",
+   "br"
+  ]
+ },
+ "VAT": {
+  "name": "Vatican City State",
+  "flags": [
+   "va"
+  ]
+ },
+ "VENZ": {
+  "name": "Venezuela",
+  "flags": [
+   "ve"
+  ]
+ },
+ "VTNM": {
+  "name": "Vietnam",
+  "flags": [
+   "vn"
+  ]
+ },
+ "ZWE": {
+  "name": "Republic of Zimbabwe",
+  "flags": [
+   "zw"
+  ]
+ }
+}

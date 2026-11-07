@@ -85,6 +85,7 @@ const $ = id => document.getElementById(id);
 let catalog = [];            // List of satellites from the TLE library's index.json
 let tleFolder = "data/tles"; // where the TLE library is: the full one (on your computer) or data/tles_public (on the live site)
 let satcat = [];             // Full satellite catalog from data/satcat.json, for the lookup box
+let owners = {};             // Owner codes (like "PRC") -> { name, flags }, from data/owners.json
 let satcatError = "";        // why the catalog failed to load ("" = no problem so far)
 let closest = null;          // the closest approach in the time window, once found: { ms, km, stepMs }
 let lookupFound = null;      // NORAD number (as used in the TLE library) of the satellite the lookup found, if it has TLEs
@@ -395,14 +396,37 @@ for (const slot of ["A", "B"]) {
   scene.add(label);
   labels[slot] = label;
 }
-function setLabelText(slot, text) {
+// Flag pictures, loaded once each: flagImages.us is a promise of the loaded image.
+const flagImages = {};
+function loadFlag(flag) {
+  if (!flagImages[flag]) {
+    const image = new Image();
+    image.src = `assets/flags/${flag}.svg`;
+    flagImages[flag] = image.decode().then(() => image);
+  }
+  return flagImages[flag];
+}
+
+const labelVersion = { A: 0, B: 0 };   // counts label changes, so a slow flag can't overwrite a newer label
+async function setLabelText(slot, text, flags = []) {
+const version = ++labelVersion[slot];
+  const images = await Promise.all(flags.map(loadFlag));
+  if (version !== labelVersion[slot]) return;    // the label changed while the flags were loading
   const canvas = document.createElement("canvas");
   canvas.width = 512; canvas.height = 96;
   const ctx = canvas.getContext("2d");
+  let x = 8;
+  for (const image of images) {                  // each flag 40 px tall, as wide as its shape needs
+    const width = 40 * image.naturalWidth / image.naturalHeight;
+    ctx.drawImage(image, x, 28, width, 40);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.strokeRect(x, 28, width, 40);
+    x += width + 8;
+  }
   ctx.font = "650 44px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
   ctx.fillStyle = "#333";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, 8, 48);
+  ctx.fillText(text, x, 48);
   labels[slot].material.map?.dispose();
   labels[slot].material.map = new THREE.CanvasTexture(canvas);
   labels[slot].material.needsUpdate = true;
@@ -579,6 +603,25 @@ function drawTimeChart(canvasId, valueAt, axisTitle) {
   }
 }
 
+// Who owns a satellite, from the catalog's owner code: { name, flags } (flags = flag file names),
+// or null if the catalog isn't loaded yet or has no owner for it.
+// Space-Track calls Soviet and Russian objects both "CIS"; launched before 1992 means Soviet.
+function ownerOf(norad) {
+  const entry = satcat.find(s => Number(s.norad) === Number(norad));
+  if (!entry?.owner) return null;
+  const owner = owners[entry.owner] ?? { name: entry.owner, flags: [] };
+  const launchYear = Number(entry.intlDes.slice(0, 4));
+  if (entry.owner === "CIS" && launchYear < 1992) return { name: "Soviet Union", flags: ["su"] };
+  return owner;
+}
+
+// The owner as HTML for the panel: small flag pictures, then the name.
+function ownerHtml(norad) {
+  const owner = ownerOf(norad);
+  if (!owner) return "owner unknown";
+  return owner.flags.map(flag => `<img class="flagIcon" src="assets/flags/${flag}.svg" alt="">`).join("") + owner.name;
+}
+
 // The "Now modeling" panel: who each satellite is, and which TLE is in use.
 // This is also where the code CHECKS that the TLE really belongs to that satellite.
 function identityCard(slot) {
@@ -602,7 +645,7 @@ function identityCard(slot) {
 
   return `<div class="identityCard">
     <div class="recordHead"><span class="sourceDot slot${slot}"></span><span>${info.name}</span></div>
-    <div class="identityMeta">NORAD ${norad} · ${info.intlDes ?? "intl. designator unknown"} · ${info.country ?? "country unknown"}</div>
+    <div class="identityMeta">NORAD ${norad} · ${info.intlDes ?? "intl. designator unknown"} · ${ownerHtml(norad)}</div>
     <div class="identityMeta">TLE ${index + 1} of ${lib.tles.length} · epoch ${formatTime(lib.epochsMs[index])} · ${tle.source}</div>
     <div class="identityMeta">Age: <span class="tleAge ${ageClass}">${describeAge(ageMs)}</span></div>
     ${checks.map(c => `<div class="dataWarning">⚠ ${c}</div>`).join("")}
@@ -873,8 +916,8 @@ function updateNames() {
   $("nameA").textContent = slotName("A");
   $("nameB").textContent = slotName("B");
   $("separationTitle").textContent = `Separation between ${slotName("A")} and ${slotName("B")}`;
-  setLabelText("A", slotName("A"));
-  setLabelText("B", slotName("B"));
+  setLabelText("A", slotName("A"), ownerOf(pair.A)?.flags);
+  setLabelText("B", slotName("B"), ownerOf(pair.B)?.flags);
 }
 
 
@@ -1228,7 +1271,8 @@ function runLookup() {
     return;
   }
   const matches = identify($("lookupInput").value);
-  const describe = s => `${s.name}  (NORAD ${s.norad}, ${s.intlDes})`;
+  const describe = s => `${s.name}  (NORAD ${s.norad}, ${s.intlDes}) · ${ownerHtml(s.norad)}`;
+
 
   if (matches.length === 0) {
     $("lookupResult").textContent = "No satellite found with that identifier.";
@@ -1238,11 +1282,11 @@ function runLookup() {
     // Compare as numbers: the library pads NORAD numbers to 5 digits ("05398"), the catalog doesn't ("5398")
     const inLibrary = catalog.find(c => Number(c.norad) === Number(found.norad));
     if (inLibrary) {
-      $("lookupResult").textContent = `${describe(found)}\nTLE history available: load it as satellite A or B.`;
+      $("lookupResult").innerHTML = `${describe(found)}\nTLE history available: load it as satellite A or B.`;
       lookupFound = inLibrary.norad;           // use the library's spelling, since that's the TLE file's name
       $("lookupActions").hidden = false;       // show the Load buttons
     } else {
-      $("lookupResult").textContent = `${describe(found)}\nNo TLE history on this site, but its current orbit can be loaded live from CelesTrak.`;
+      $("lookupResult").innerHTML = `${describe(found)}\nNo TLE history on this site, but its current orbit can be loaded live from CelesTrak.`;
       lookupFound = found.norad.padStart(5, "0");   // 5 digits, the same style as the TLE library
       $("lookupActions").hidden = false;
     }
@@ -1251,7 +1295,7 @@ function runLookup() {
     const header = matches.length > 10
       ? `${matches.length} matches (showing the first 10):`
       : `${matches.length} matches:`;
-    $("lookupResult").textContent = [header, ...shown.map(describe)].join("\n");
+    $("lookupResult").innerHTML = [header, ...shown.map(describe)].join("\n");
   }
 }
 $("lookupBtn").addEventListener("click", runLookup);
@@ -1395,6 +1439,11 @@ async function loadSatcat() {
     if (!response.ok) throw new Error("Satellite catalog not found. Run:  python Viz/build_satcat_json.py");
     satcat = await response.json();
     $("lookupResult").textContent = `Catalog ready: ${satcat.length.toLocaleString()} objects.`;
+    if (pair.A && pair.B) {             // satellites chosen before the catalog arrived: add their flags now
+      updateNames();
+      lastIdentityKey = "";
+      updateIdentity();
+    }
   } catch (error) {                                      // missing file, broken file, or no connection
     satcatError = error.message;                         // remember why, for runLookup
     $("lookupResult").textContent = satcatError;
@@ -1414,6 +1463,11 @@ async function loadSatcat() {
 // ---------------------------------------------------------------------------
 // 13. Start: load the satellite catalog and TLE library list, then wait for the user to pick satellites
 // ---------------------------------------------------------------------------
+try {
+  owners = await (await fetch("data/owners.json")).json();
+} catch (error) {
+  console.warn("No owner list (data/owners.json), so no flags", error);
+}
 loadSatcat();   // no "await": load the catalog in the background so the 3D view doesn't wait for it
 try {
   let indexResponse = await fetch(`${tleFolder}/index.json`);

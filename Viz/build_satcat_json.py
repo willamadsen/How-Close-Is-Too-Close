@@ -35,6 +35,8 @@ COLUMNS_TO_KEEP = {
     "NORAD_CAT_ID": "norad",
     "OBJECT_ID": "intlDes",
     "OBJECT_NAME": "name", 
+    "OWNER": "owner",
+
 }
 
 
