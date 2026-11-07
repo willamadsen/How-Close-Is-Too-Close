@@ -1,15 +1,28 @@
 // WORK IN PROGRESS: this is a working copy that is changing often. Expect unfinished features and breaking changes.
-//
 // compare.js — shows TWO satellites around Earth, computed directly from their TLEs.
 //
-// How it works, in one paragraph:
-//   Python (Code/build_tle_library.py) collects each satellite's TLE history into
-//   data/tles/<NORAD>.json. When you pick two satellites, this file loads their
-//   histories. For every moment shown on screen it picks, for each satellite, the
-//   TLE whose epoch is CLOSEST in time to that moment, and runs the SGP4 orbit
-//   model (via the satellite.js library) to get the satellite's position.
-//   Positions are in the TEME frame, which is Earth-centered inertial (ECI).
-
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// SECTIONS:
+// 1. Load the libraries
+// 2. Settings that never change ("const" = constant)
+// 3. Things that DO change while the page runs ("let" = can be reassigned)
+// 4. Loading TLEs and computing positions
+// 5. Set up the 3D scene: camera, renderer, Earth
+// 6. Create the two satellite dots and two orbit lines (one per slot)
+// 7. Formatting helpers
+// 8. Updating the picture
+// 9. Camera  
+// 10. Choosing satellites and time windows 
+// 11. Responding to the user 
+// 12. The animation loop - the browswer calls this about 60 times per second
+// 13. Start: load the satellite catalog and TLE library list, then wait for the user to pick satellites
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//
+//
+//
+//
 // ---------------------------------------------------------------------------
 // 1. Load the libraries
 // ---------------------------------------------------------------------------
@@ -23,6 +36,16 @@ import * as topojson from "topojson-client";
 // "window" (the browser's global object). We give it a short name here.
 const sgp4 = window.satellite;
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 2. Settings that never change ("const" = constant)
 // ---------------------------------------------------------------------------
@@ -32,8 +55,10 @@ const CHART_MINUTES = 120;         // The separation chart shows the last two ho
 const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amber.
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
+const CASE_PAD_DAYS = 7;            // "Reported period ± 1 week" adds this many days either side
 const DOT_SCREEN_SIZE = 0.022       // 0.022 = 2.2% of the screen height at any given moment
 const LABEL_SCREEN_SIZE = 0.03      // name labels are 3% of the screen height at any given moment
+const DASH_SCREEN_SIZE = 0.01;      // each dash (and gap) in a dashed orbit line is 1% of the screen height
 
 // Each "slot" (A or B) gets its own colors, no matter which satellite is in it.
 const SLOTS = {
@@ -43,6 +68,16 @@ const SLOTS = {
 
 // A tiny helper so we can write $("playBtn") instead of document.getElementById("playBtn").
 const $ = id => document.getElementById(id);
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // 3. Things that DO change while the page runs ("let" = can be reassigned)
@@ -54,13 +89,25 @@ let satcatError = "";        // why the catalog failed to load ("" = no problem 
 let closest = null;          // the closest approach in the time window, once found: { ms, km, stepMs }
 let lookupFound = null;      // NORAD number (as used in the TLE library) of the satellite the lookup found, if it has TLEs
 const library = {};          // Loaded TLE histories, keyed by NORAD number
-const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B
+const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots A and B 
 let startMs = 0, endMs = 0;  // The chosen time window
+let reportedPeriod = null;   // the case's reported start and end, { start, end } in ms, once a case is loaded (null = none)
+let caseNorads = [];         // NORAD numbers of the satellites in the case opened from the link ([] = none)
 let currentMs = 0;           // The moment currently shown
 let playing = false;
 let lastFrameTime = performance.now();
 let cameraTween = null;      // A smooth camera movement in progress, or null if none
 let lastIdentityKey = "";    // Used to avoid rebuilding the "Now modeling" panel every frame
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // 4. Loading TLEs and computing positions
@@ -171,11 +218,38 @@ function distanceKm(r1, r2) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+// A speed in km/s as text: metres per second when slow (like the sheet's m/s), km/s when fast.
+function formatSpeed(kmPerS) {
+  return kmPerS < 1 ? `${Math.round(kmPerS * 1000).toLocaleString()} m/s` : `${kmPerS.toFixed(2)} km/s`;
+}
+
 // Distance between A and B at time ms, or null if either position is unavailable.
 function separationAt(ms) {
   const a = positionAt(pair.A, ms), b = positionAt(pair.B, ms);
   return a && b ? distanceKm(a, b) : null;
 }
+// How fast A and B move compared with each other at time ms, in km/s, or null if unavailable.
+// The velocities are [x, y, z] like positions, so distanceKm gives the size of their difference.
+function relativeSpeedAt(ms) {
+  const a = stateAt(pair.A, ms), b = stateAt(pair.B, ms);
+  return a && b ? distanceKm(a.v, b.v) : null;
+}
+
+// The same speed in m/s, for the chart (the sheet uses m/s too).
+function speedInMetresAt(ms) {
+  const kmPerS = relativeSpeedAt(ms);
+  return kmPerS === null ? null : kmPerS * 1000;
+}
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // 5. Set up the 3D scene: camera, renderer, Earth
@@ -250,6 +324,16 @@ loadBorders();
 // three.js treats "y" as up, but in ECI "z" points to the North Pole, so we swap axes.
 const eciToScene = r => new THREE.Vector3(r[0] / EARTH_RADIUS_KM, r[2] / EARTH_RADIUS_KM, -r[1] / EARTH_RADIUS_KM);
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 6. Create the two satellite dots and two orbit lines (one per slot)
 // ---------------------------------------------------------------------------
@@ -277,9 +361,23 @@ for (const slot of ["A", "B"]) {
   scene.add(dot);
   dots[slot] = dot;
 
-  const trail = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: SLOTS[slot].line, transparent: true, opacity: 0.75 }));
+  const solid = new THREE.LineBasicMaterial({ color: SLOTS[slot].line, transparent: true, opacity: 0.75 });
+  const dashed = new THREE.LineDashedMaterial({ color: SLOTS[slot].line, transparent: true, opacity: 0.75 });
+  const trail = new THREE.Line(new THREE.BufferGeometry(), solid);
+  trail.userData = { solid, dashed };   // both looks, so the line can switch when its TLE goes stale
   scene.add(trail);
   trails[slot] = trail;
+}
+
+// A TLE more than STALE_DAYS from the current moment gives unreliable positions
+// (the same rule the "Now modeling" panel uses to turn red).
+const tleIsStale = (lib, index) => Math.abs(currentMs - lib.epochsMs[index]) / DAY_MS > STALE_DAYS;
+
+// Show a line dashed (unreliable TLE) or solid. The dash size is set every frame in animate().
+function setDashed(line, dashed) {
+  line.material = dashed ? line.userData.dashed : line.userData.solid;
+  if (!dashed) return;
+  line.computeLineDistances();
 }
 
 
@@ -311,6 +409,16 @@ function setLabelText(slot, text) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 7. Formatting helpers
 // ---------------------------------------------------------------------------
@@ -327,6 +435,16 @@ function describeAge(ageMs) {
   const amount = days >= 1 ? `${days.toFixed(1)} days` : `${(days * 24).toFixed(1)} hours`;
   return `${amount} ${ageMs >= 0 ? "after" : "before"} epoch`;
 }
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // 8. Updating the picture
@@ -357,10 +475,13 @@ function updateScene() {
     }
     trails[slot].geometry.dispose();
     trails[slot].geometry = new THREE.BufferGeometry().setFromPoints(points);
+        setDashed(trails[slot], tleIsStale(lib, tleIndex));
   }
 
   const km = positions.A && positions.B ? distanceKm(positions.A, positions.B) : null;
   $("rangeStat").textContent = km === null ? "—" : `${Math.round(km).toLocaleString()} km`;
+  const speed = relativeSpeedAt(currentMs);
+  $("speedStat").textContent = speed === null ? "—" : formatSpeed(speed);
   $("timeDisplay").textContent = formatTime(currentMs).replace(" UTC", "");
   $("sliderNow").textContent = formatTime(currentMs);
   $("timelineSlider").value = currentMs;
@@ -375,15 +496,18 @@ function updateScene() {
     labels[slot].visible = dots[slot].visible;
   }
 
-  drawSeparationChart();
+  drawTimeChart("separationChart", separationAt, "Separation (km)");
+  drawTimeChart("speedChart", speedInMetresAt, "Relative speed (m/s)");
   updateIdentity();
+
 }
 
-// Draw the A-to-B distance over the last two hours, one point per minute.
+// Draw a value over the last two hours, one point per minute, on the canvas named canvasId.
+// valueAt(ms) gives the value at a moment (separation or relative speed).
 // Each point uses the TLE nearest to ITS time, so a jump in the line means the
 // nearest TLE changed there.
-function drawSeparationChart() {
-  const canvas = $("separationChart"), ctx = canvas.getContext("2d");
+function drawTimeChart(canvasId, valueAt, axisTitle) {
+  const canvas = $(canvasId), ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
   const pad = { left: 59, right: 12, top: 9, bottom: 31 };
   const leftMs = currentMs - CHART_MINUTES * MINUTE_MS;
@@ -393,19 +517,19 @@ function drawSeparationChart() {
   for (let m = 0; m <= CHART_MINUTES; m++) {
     const ms = leftMs + m * MINUTE_MS;
     if (ms < startMs) continue;
-    const km = separationAt(ms);
-    if (km !== null) points.push({ ms, km });
+    const value =valueAt(ms);
+    if (value !== null) points.push({ ms, value });
   }
 
   // Pick a "nice" top value for the y-axis (like 100, 200, 4000) with 4 tick marks.
-  const rawMax = Math.max(1, ...points.map(p => p.km));
+  const rawMax = Math.max(1, ...points.map(p => p.value));
   const magnitude = 10 ** Math.floor(Math.log10(rawMax / 4));
   const step = Math.ceil(rawMax / 4 / magnitude) * magnitude;
   const yMax = step * 4;
 
   // Convert a time to an x pixel, and a distance to a y pixel.
   const x = ms => pad.left + (ms - leftMs) / (currentMs - leftMs) * (w - pad.left - pad.right);
-  const y = km => pad.top + (1 - Math.min(km, yMax) / yMax) * (h - pad.top - pad.bottom);
+  const y = value => pad.top + (1 - Math.min(value, yMax) / yMax) * (h - pad.top - pad.bottom);
 
   ctx.clearRect(0, 0, w, h);
   ctx.font = "9px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
@@ -425,7 +549,7 @@ function drawSeparationChart() {
   ctx.translate(11, pad.top + (h - pad.top - pad.bottom) / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center"; ctx.fillStyle = "#777";
-  ctx.fillText("Separation (km)", 0, 0);
+  ctx.fillText(axisTitle, 0, 0);
   ctx.restore();
 
   // Time labels every 30 minutes along the bottom
@@ -443,8 +567,16 @@ function drawSeparationChart() {
   ctx.beginPath();
   ctx.strokeStyle = "#555";
   ctx.lineWidth = 1.8;
-  points.forEach((p, i) => (i === 0 ? ctx.moveTo(x(p.ms), y(p.km)) : ctx.lineTo(x(p.ms), y(p.km))));
+  points.forEach((p, i) => (i === 0 ? ctx.moveTo(x(p.ms), y(p.value)) : ctx.lineTo(x(p.ms), y(p.value))));
   ctx.stroke();
+  
+  // A gold dot at the closest approach, when it's inside the two hours shown
+  if (closest && closest.ms >= leftMs && closest.ms <= currentMs) {
+    ctx.beginPath();
+    ctx.fillStyle = "#eaaa00";
+    ctx.arc(x(closest.ms), y(valueAt(closest.ms)), 4, 0, 2 * Math.PI);
+    ctx.fill();
+  }
 }
 
 // The "Now modeling" panel: who each satellite is, and which TLE is in use.
@@ -485,6 +617,16 @@ function updateIdentity() {
   $("identity").innerHTML = identityCard("A") + identityCard("B");
 }
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 9. Camera
 // ---------------------------------------------------------------------------
@@ -516,18 +658,28 @@ function moveCameraSmoothly() {
   };
 }
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 10. Choosing satellites and time windows
 // ---------------------------------------------------------------------------
 // The time span the date pickers allow, and the default window.
-// With the "overlap" checkbox ticked: only dates where we have TLEs for BOTH satellites.
-// Unticked (or if the satellites don't overlap at all): from the earliest TLE of either
+// With "Dates both satellites have TLEs" chosen: only dates where we have TLEs for BOTH satellites.
+// Any other choice (or if the satellites don't overlap at all): from the earliest TLE of either
 // satellite to the most recent TLE of either.
 function dataLimits() {
   const a = library[pair.A].coverage, b = library[pair.B].coverage;
   const overlapStart = Math.max(a[0], b[0]), overlapEnd = Math.min(a[a.length - 1], b[b.length - 1]);
   const overlap = overlapStart < overlapEnd;
-  if (overlap && $("useOverlap").checked) return { min: overlapStart, max: overlapEnd, overlap, overlapOnly: true };
+  if (overlap && $("windowMode").value === "overlap") return { min: overlapStart, max: overlapEnd, overlap, overlapOnly: true };
   return { min: Math.min(a[0], b[0]), max: Math.max(a[a.length - 1], b[b.length - 1]), overlap, overlapOnly: false };
 }
 
@@ -536,6 +688,7 @@ function dataLimits() {
 // once both are loaded, the dates are set and the pair is modeled.
 async function setPair(noradA, noradB, requestedStart = null, requestedEnd = null) {
   pair.A = noradA || null; pair.B = noradB || null;      // "" (the Choose… option) becomes null
+    if (caseNorads.length && ![pair.A, pair.B].every(norad => caseNorads.includes(norad))) closeCase();   // left the incident
   $("rangeNote").textContent = "Loading TLEs…";
 
   // Load whichever satellites are chosen. allSettled waits for all of them, even if one fails.
@@ -550,6 +703,7 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   if (pair.B) addToDropdowns(pair.B);
   $("satA").value = pair.A ?? ""; $("satB").value = pair.B ?? "";  
     updateNames();
+    drawCasePairs();
 
     if (failed || !pair.A || !pair.B) {                    // nothing to model yet
     setView("earth");                                    // back to Full Earth
@@ -563,11 +717,20 @@ async function setPair(noradA, noradB, requestedStart = null, requestedEnd = nul
   lastIdentityKey = "";
     setView(preferredView);                                         // redraw and re-frame in the current view
 }
+// The dates for the two "Reported period" menu choices, as text (null for any other choice).
+function caseWindow() {
+  const mode = $("windowMode").value;
+  if (!reportedPeriod || (mode !== "case" && mode !== "caseWeek")) return null;
+  const pad = mode === "caseWeek" ? CASE_PAD_DAYS * DAY_MS : 0;
+  return { start: new Date(reportedPeriod.start - pad).toISOString(), end: new Date(reportedPeriod.end + pad).toISOString() };
+}
 
 // Set the date pickers' allowed range from the TLE data, then set the window
 // (to the requested dates if given, otherwise the whole allowed range).
 function applyLimits(requestedStart = null, requestedEnd = null) {
   const limits = dataLimits();
+    const caseDates = caseWindow();
+  if (caseDates) { requestedStart = caseDates.start; requestedEnd = caseDates.end; }
   for (const input of [$("startTime"), $("endTime")]) {
     input.min = toInputValue(limits.min);
     input.max = toInputValue(limits.max);
@@ -594,14 +757,85 @@ function clearScene() {
     trails[slot].geometry = new THREE.BufferGeometry();  // ...and replace it with an empty one
   }
   $("rangeStat").textContent = "—";                     // distance
+    $("speedStat").textContent = "—";                     // relative speedS
   $("timeDisplay").textContent = "—";                   // time
   $("sliderNow").textContent = "—";
   $("identity").innerHTML = "";                          // "Now modeling" panel
   lastIdentityKey = "";                                  // make sure the panel rebuilds next time
     closest = null;
   $("closestApproach").hidden = true;
-  const chart = $("separationChart");
-  chart.getContext("2d").clearRect(0, 0, chart.width, chart.height);   // blank the chart
+    for (const id of ["separationChart", "speedChart"]) {  // blank the charts
+    const chart = $(id);
+    chart.getContext("2d").clearRect(0, 0, chart.width, chart.height);
+  }
+}
+// Turn the two "Reported period" menu choices on or off.
+function enableCaseChoices(on) {
+  for (const option of $("windowMode").options) {
+    if (option.value === "case" || option.value === "caseWeek") option.disabled = !on;
+  }
+}
+
+// Open the incident named in the link (compare.html?case=E-002): its satellites, on its dates.
+async function openCase(id) {
+  const response = await fetch("data/cases.json");
+  const cases = response.ok ? await response.json() : {};
+  const found = cases[id];
+  if (!found) {
+    await setPair(null, null);
+    $("rangeNote").textContent = `Incident ${id} can't be modeled yet.`;
+    return;
+  }
+  for (const satellite of found.satellites) {            // real names, from the full catalog
+    const entry = catalog.find(s => s.norad === satellite.norad);
+    if (entry) entry.name = satellite.name;
+  }
+  fillDropdowns();
+  caseNorads = found.satellites.map(satellite => satellite.norad);
+  await Promise.all(caseNorads.map(norad => loadSatellite(norad)));
+  reportedPeriod = { start: Date.parse(found.start), end: Date.parse(found.end) };
+  enableCaseChoices(true);
+  $("windowMode").value = "caseWeek";
+  $("caseTitle").textContent = `Incident ${id}`;
+  $("caseBox").hidden = false;
+  await setPair(caseNorads[0], caseNorads[1]);
+}
+
+// The user chose a satellite from outside the incident, so the reported dates no longer apply.
+function closeCase() {
+  caseNorads = [];
+  reportedPeriod = null;
+  enableCaseChoices(false);
+  if ($("windowMode").value.startsWith("case")) $("windowMode").value = "overlap";
+  $("caseBox").hidden = true;
+}
+
+// A three-satellite incident gets one button per pair, since the page shows two at a time.
+function drawCasePairs() {
+  $("casePairs").innerHTML = "";
+  if (caseNorads.length < 3) return;
+  const [x, y, z] = caseNorads;
+  for (const [a, b] of [[x, y], [x, z], [y, z]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = `${library[a].info.name} + ${library[b].info.name}`;
+    button.classList.toggle("activePair", [pair.A, pair.B].includes(a) && [pair.A, pair.B].includes(b));
+    button.addEventListener("click", () => setPair(a, b));
+    $("casePairs").append(button);
+  }
+}
+
+// Shade the reported period on the time bar, as a share of the whole window.
+// No band when no case is loaded, or when the window IS the reported period.
+function updateReportedBand() {
+  let from = 0, to = 0;
+  if (reportedPeriod && $("windowMode").value !== "case") {
+    const span = endMs - startMs;
+    from = Math.min(1, Math.max(0, (reportedPeriod.start - startMs) / span));
+    to = Math.min(1, Math.max(0, (reportedPeriod.end - startMs) / span));
+  }
+  $("timelineSlider").style.setProperty("--bandStart", `${from * 100}%`);
+  $("timelineSlider").style.setProperty("--bandEnd", `${to * 100}%`);
 }
 
 // Set the start and end of the time window, and jump to the start.
@@ -614,8 +848,9 @@ function setWindow(newStart, newEnd) {
   $("timelineSlider").max = endMs;
   $("sliderStart").textContent = formatDate(startMs);
   $("sliderEnd").textContent = formatDate(endMs);
-  updateScene();
-  updateClosestApproach();
+    updateReportedBand();
+    updateClosestApproach();
+    updateScene();
 }
 
 // Add a satellite loaded live from CelesTrak to both dropdowns (once), so it can be picked again.
@@ -697,7 +932,6 @@ function identify(text) {
   const startsWith = satcat.filter(s => s.name.startsWith(name));
   const containsElsewhere = satcat.filter(s => s.name.includes(name) && !s.name.startsWith(name));
   return [...startsWith, ...containsElsewhere];
-
 }
 // ---------------------------------------------------------------------------
 // Closest approach: when, during the time window, are A and B nearest each other?
@@ -806,6 +1040,7 @@ scene.add(relativeAxes);
 // B's fading trail: one line whose colour goes from white (4 hours ago, blending into the
 // background) to grey (now), so older positions fade away.
 const relativeTrail = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true }));
+relativeTrail.userData = { solid: relativeTrail.material, dashed: new THREE.LineDashedMaterial({ vertexColors: true }) };
 relativeTrail.visible = false;
 scene.add(relativeTrail);
 
@@ -852,6 +1087,7 @@ function drawRelative() {
   relativeTrail.geometry.dispose();
   relativeTrail.geometry = new THREE.BufferGeometry().setFromPoints(points);
   relativeTrail.geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  setDashed(relativeTrail, tleIsStale(library[pair[centre]], tleCentre) || tleIsStale(library[pair[other]], tleOther));
 } // closes drawRelative
 
 // Switch between the Full Earth and Relative motion views.
@@ -924,8 +1160,6 @@ function relativeFraming(fitBoth = false) {
   const distance = Math.max(reach, 0.0005) / (0.7 * halfHeightPerUnit);
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
-
-
 // Work out the closest approach for the current window and show it in the panel.
 function updateClosestApproach() {
   closest = pair.A && pair.B ? findClosestApproach() : null;
@@ -936,12 +1170,24 @@ function updateClosestApproach() {
     return `${slotName(slot)} ${describeAge(closest.ms - lib.epochsMs[i])}`;
   });
   $("caDistance").textContent = formatKm(closest.km);
+  $("caSpeed").textContent = formatSpeed(relativeSpeedAt(closest.ms));
   $("caTime").textContent = formatTimeSeconds(closest.ms);
   $("caDetails").textContent =
     `Nearest TLEs: ${tleAges.join("; ")}. ` +
     `Checked every ${Math.round(closest.stepMs / 1000).toLocaleString()} s, then narrowed to 1 s. ` +
-    `Accuracy is limited by the TLEs (typically a kilometre or more, worse far from a TLE epoch).`;
+    `Accuracy is limited by the TLEs (typically a kilometre or more, worse far from a TLE epoch). ` +
+    `The gold dot on the charts marks this moment.`;
 }
+
+
+
+
+
+
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // 11. Responding to the user
@@ -957,8 +1203,14 @@ $("satB").addEventListener("change", event => {
   setPair(a, b);
 });
 
-// Ticking/unticking the overlap checkbox resets the window to the new default range.
-$("useOverlap").addEventListener("change", () => { if (pair.A && pair.B) applyLimits(); });
+// Time window menu: show the Start/End pickers only for "Custom dates".
+// The other options reset the window to that option's dates.
+$("windowMode").addEventListener("change", () => {
+  const mode = $("windowMode").value;
+  $("customDates").hidden = mode !== "custom";
+    updateReportedBand();
+  if (pair.A && pair.B && mode !== "custom") applyLimits();
+});
 $("startTime").addEventListener("change", () => setWindow(fromInputValue($("startTime").value), endMs));
 $("endTime").addEventListener("change", () => setWindow(startMs, fromInputValue($("endTime").value)));
 
@@ -1032,9 +1284,6 @@ $("axesBtn").addEventListener("click", () => {
   relativeAxes.visible = view === "relative" && showAxes;
 });
 
-
-
-
 // Jump to the closest approach, in the satellite-centred view
 $("caViewBtn").addEventListener("click", () => {
   if (!closest) return;
@@ -1051,7 +1300,13 @@ $("playBtn").addEventListener("click", () => {
 // The time bar's pop-up: the exact date and time at a point along the slider.
 // x is how far along the slider that point is, in pixels from its left edge.
 function showSliderTip(ms, x) {
-  $("sliderTip").textContent = formatTime(ms);
+  let text = formatTime(ms);
+  const inReported = reportedPeriod && $("windowMode").value !== "case"
+    && ms >= reportedPeriod.start && ms <= reportedPeriod.end;
+  if (inReported) {
+    text = `Reported period: ${formatDate(reportedPeriod.start)} – ${formatDate(reportedPeriod.end)}\n${text}`;
+  }
+  $("sliderTip").textContent = text;
   $("sliderTip").style.left = `${x}px`;
   $("sliderTip").hidden = false;
 }
@@ -1087,6 +1342,16 @@ function updateRendererLayout() {
 addEventListener("resize", updateRendererLayout);
 updateRendererLayout();
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 12. The animation loop — the browser calls this about 60 times per second
 // ---------------------------------------------------------------------------
@@ -1110,6 +1375,15 @@ function animate(now) {
 
   lastFrameTime = now;
   controls.update();
+  // Keep dashes the same size on screen at any zoom: DASH_SCREEN_SIZE of the screen height,
+  // turned into scene units at the camera's distance (the same idea as the dot sizes in setView)
+  const lens = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dash = DASH_SCREEN_SIZE * camera.position.distanceTo(controls.target) * lens;
+  for (const line of [trails.A, trails.B, relativeTrail]) {
+    line.userData.dashed.dashSize = dash;
+    line.userData.dashed.gapSize = dash;
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -1127,6 +1401,16 @@ async function loadSatcat() {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // 13. Start: load the satellite catalog and TLE library list, then wait for the user to pick satellites
 // ---------------------------------------------------------------------------
@@ -1141,7 +1425,10 @@ try {
   catalog = (await indexResponse.json()).satellites;
   fillDropdowns();
 
-  setPair(null, null);   // start empty: the user picks both satellites
+  // A link like compare.html?case=E-002 opens that incident; otherwise start empty for the user to pick
+  const caseId = new URLSearchParams(location.search).get("case");
+  if (caseId) await openCase(caseId);
+  else setPair(null, null);
 
 } catch (error) {
   $("rangeNote").textContent = error.message;

@@ -1,0 +1,630 @@
+{
+  "E-001": {
+    "satellites": [
+      {
+        "norad": "40258",
+        "name": "LUCH (OLYMP-K 1)"
+      },
+      {
+        "norad": "39509",
+        "name": "ATHENA-FIDUS"
+      }
+    ],
+    "start": "2017-01-01T00:00:00Z",
+    "end": "2017-12-31T23:59:59Z"
+  },
+  "E-002": {
+    "satellites": [
+      {
+        "norad": "44797",
+        "name": "COSMOS 2542"
+      },
+      {
+        "norad": "39232",
+        "name": "USA 245"
+      },
+      {
+        "norad": "44835",
+        "name": "COSMOS 2543"
+      }
+    ],
+    "start": "2019-12-01T00:00:00Z",
+    "end": "2020-02-29T23:59:59Z"
+  },
+  "E-003": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "44910",
+        "name": "SHIJIAN-20 (SJ-20)"
+      }
+    ],
+    "start": "2020-08-01T00:00:00Z",
+    "end": "2020-08-31T23:59:59Z"
+  },
+  "E-004": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "44910",
+        "name": "SHIJIAN-20 (SJ-20)"
+      }
+    ],
+    "start": "2021-05-04T00:00:00Z",
+    "end": "2021-05-04T23:59:59Z"
+  },
+  "E-005": {
+    "satellites": [
+      {
+        "norad": "41744",
+        "name": "USA 270"
+      },
+      {
+        "norad": "50321",
+        "name": "SHIYAN-12 01 (SY-12 01)"
+      },
+      {
+        "norad": "50322",
+        "name": "SHIYAN-12 02 (SY-12 02)"
+      }
+    ],
+    "start": "2022-01-01T00:00:00Z",
+    "end": "2022-07-31T23:59:59Z"
+  },
+  "E-006": {
+    "satellites": [
+      {
+        "norad": "28642",
+        "name": "DART"
+      },
+      {
+        "norad": "25736",
+        "name": "MUBLCOM"
+      }
+    ],
+    "start": "2005-04-15T00:00:00Z",
+    "end": "2005-04-16T23:59:59Z"
+  },
+  "E-007": {
+    "satellites": [
+      {
+        "norad": "40258",
+        "name": "LUCH (OLYMP-K 1)"
+      },
+      {
+        "norad": "25473",
+        "name": "INTELSAT 7 (IS-7)"
+      },
+      {
+        "norad": "26824",
+        "name": "INTELSAT 901 (IS-901)"
+      }
+    ],
+    "start": "2015-01-01T00:00:00Z",
+    "end": "2015-12-31T23:59:59Z"
+  },
+  "E-009": {
+    "satellites": [
+      {
+        "norad": "41838",
+        "name": "SHIJIAN-17 (SJ-17)"
+      },
+      {
+        "norad": "30794",
+        "name": "SKYNET 5A"
+      }
+    ],
+    "start": "2017-07-01T00:00:00Z",
+    "end": "2019-12-31T23:59:59Z"
+  },
+  "E-017": {
+    "satellites": [
+      {
+        "norad": "40258",
+        "name": "LUCH (OLYMP-K 1)"
+      },
+      {
+        "norad": "41747",
+        "name": "INTELSAT 36 (IS-36)"
+      }
+    ],
+    "start": "2019-11-01T00:00:00Z",
+    "end": "2019-11-30T23:59:59Z"
+  },
+  "E-018": {
+    "satellites": [
+      {
+        "norad": "40099",
+        "name": "USA 253"
+      },
+      {
+        "norad": "44076",
+        "name": "TIANLIAN 2-01"
+      }
+    ],
+    "start": "2020-02-26T00:00:00Z",
+    "end": "2020-02-26T23:59:59Z"
+  },
+  "E-019": {
+    "satellites": [
+      {
+        "norad": "40099",
+        "name": "USA 253"
+      },
+      {
+        "norad": "44231",
+        "name": "BEIDOU-2 G8"
+      }
+    ],
+    "start": "2020-02-28T00:00:00Z",
+    "end": "2020-02-28T23:59:59Z"
+  },
+  "E-020": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "42662",
+        "name": "CHINASAT 16 (SJ-13)"
+      }
+    ],
+    "start": "2020-04-08T00:00:00Z",
+    "end": "2020-04-08T23:59:59Z"
+  },
+  "E-022": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "42662",
+        "name": "CHINASAT 16 (SJ-13)"
+      }
+    ],
+    "start": "2020-11-23T00:00:00Z",
+    "end": "2020-11-23T23:59:59Z"
+  },
+  "E-023": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "41911",
+        "name": "TJS-2"
+      }
+    ],
+    "start": "2020-11-30T00:00:00Z",
+    "end": "2020-11-30T23:59:59Z"
+  },
+  "E-024": {
+    "satellites": [
+      {
+        "norad": "41744",
+        "name": "USA 270"
+      },
+      {
+        "norad": "43917",
+        "name": "TJS-3 AKM"
+      }
+    ],
+    "start": "2021-01-01T00:00:00Z",
+    "end": "2021-01-01T23:59:59Z"
+  },
+  "E-026": {
+    "satellites": [
+      {
+        "norad": "41744",
+        "name": "USA 270"
+      },
+      {
+        "norad": "43874",
+        "name": "TJS-3"
+      }
+    ],
+    "start": "2021-04-16T00:00:00Z",
+    "end": "2021-04-16T23:59:59Z"
+  },
+  "E-027": {
+    "satellites": [
+      {
+        "norad": "41744",
+        "name": "USA 270"
+      },
+      {
+        "norad": "44910",
+        "name": "SHIJIAN-20 (SJ-20)"
+      }
+    ],
+    "start": "2021-05-03T00:00:00Z",
+    "end": "2021-05-03T23:59:59Z"
+  },
+  "E-028": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "43874",
+        "name": "TJS-3"
+      }
+    ],
+    "start": "2021-05-06T00:00:00Z",
+    "end": "2021-05-06T23:59:59Z"
+  },
+  "E-029": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "44910",
+        "name": "SHIJIAN-20 (SJ-20)"
+      }
+    ],
+    "start": "2021-09-30T00:00:00Z",
+    "end": "2021-09-30T23:59:59Z"
+  },
+  "E-030": {
+    "satellites": [
+      {
+        "norad": "40258",
+        "name": "LUCH (OLYMP-K 1)"
+      },
+      {
+        "norad": "41748",
+        "name": "INTELSAT 33E (IS-33E)"
+      }
+    ],
+    "start": "2021-10-05T00:00:00Z",
+    "end": "2022-01-15T23:59:59Z"
+  },
+  "E-033": {
+    "satellites": [
+      {
+        "norad": "49330",
+        "name": "SHIJIAN-21 (SJ-21)"
+      },
+      {
+        "norad": "62485",
+        "name": "SHIJIAN-25 (SJ-25)"
+      }
+    ],
+    "start": "2025-06-01T00:00:00Z",
+    "end": "2025-07-18T23:59:59Z"
+  },
+  "E-036": {
+    "satellites": [
+      {
+        "norad": "30772",
+        "name": "OE (ASTRO)"
+      },
+      {
+        "norad": "30774",
+        "name": "OE (NEXTSAT)"
+      }
+    ],
+    "start": "2007-05-05T00:00:00Z",
+    "end": "2007-05-06T23:59:59Z"
+  },
+  "E-037": {
+    "satellites": [
+      {
+        "norad": "36596",
+        "name": "SJ-12"
+      },
+      {
+        "norad": "33409",
+        "name": "SHIJIAN-6 03B (SJ-6 03B)"
+      }
+    ],
+    "start": "2010-08-11T00:00:00Z",
+    "end": "2010-08-20T23:59:59Z"
+  },
+  "E-038": {
+    "satellites": [
+      {
+        "norad": "36605",
+        "name": "TANDEM-X"
+      },
+      {
+        "norad": "31698",
+        "name": "TERRASAR-X"
+      }
+    ],
+    "start": "2010-10-11T00:00:00Z",
+    "end": "2010-10-14T23:59:59Z"
+  },
+  "E-039": {
+    "satellites": [
+      {
+        "norad": "43600",
+        "name": "AEOLUS"
+      },
+      {
+        "norad": "44261",
+        "name": "STARLINK-44"
+      }
+    ],
+    "start": "2019-09-02T00:00:00Z",
+    "end": "2019-09-02T23:59:59Z"
+  },
+  "E-041": {
+    "satellites": [
+      {
+        "norad": "44971",
+        "name": "STARLINK-1095"
+      },
+      {
+        "norad": "48274",
+        "name": "CSS (TIANHE)"
+      }
+    ],
+    "start": "2021-07-01T00:00:00Z",
+    "end": "2021-07-01T23:59:59Z"
+  },
+  "E-042": {
+    "satellites": [
+      {
+        "norad": "47989",
+        "name": "STARLINK-2305"
+      },
+      {
+        "norad": "48274",
+        "name": "CSS (TIANHE)"
+      }
+    ],
+    "start": "2021-10-21T00:00:00Z",
+    "end": "2021-10-21T23:59:59Z"
+  },
+  "E-043": {
+    "satellites": [
+      {
+        "norad": "49330",
+        "name": "SHIJIAN-21 (SJ-21)"
+      },
+      {
+        "norad": "34779",
+        "name": "BEIDOU-2 G2"
+      }
+    ],
+    "start": "2022-01-01T00:00:00Z",
+    "end": "2022-01-31T23:59:59Z"
+  },
+  "E-045": {
+    "satellites": [
+      {
+        "norad": "58992",
+        "name": "ADRAS-J"
+      },
+      {
+        "norad": "33500",
+        "name": "H-2A R/B"
+      }
+    ],
+    "start": "2024-07-15T00:00:00Z",
+    "end": "2024-07-16T23:59:59Z"
+  },
+  "E-047": {
+    "satellites": [
+      {
+        "norad": "62459",
+        "name": "SDX01"
+      },
+      {
+        "norad": "62460",
+        "name": "SDX02"
+      }
+    ],
+    "start": "2025-01-16T00:00:00Z",
+    "end": "2025-01-16T23:59:59Z"
+  },
+  "E-051": {
+    "satellites": [
+      {
+        "norad": "55264",
+        "name": "LDPE-3A"
+      },
+      {
+        "norad": "55131",
+        "name": "SHIJIAN-23 (SJ-23)"
+      }
+    ],
+    "start": "2024-10-29T00:00:00Z",
+    "end": "2024-11-09T23:59:59Z"
+  },
+  "E-052": {
+    "satellites": [
+      {
+        "norad": "64467",
+        "name": "COSMOS 2589"
+      },
+      {
+        "norad": "43432",
+        "name": "COSMOS 2526"
+      }
+    ],
+    "start": "2026-09-25T00:00:00Z",
+    "end": "2026-10-11T23:59:59Z"
+  },
+  "E-053": {
+    "satellites": [
+      {
+        "norad": "63524",
+        "name": "TJS-17"
+      },
+      {
+        "norad": "63924",
+        "name": "TJS-19"
+      }
+    ],
+    "start": "2026-10-08T00:00:00Z",
+    "end": "2026-10-09T23:59:59Z"
+  },
+  "E-054": {
+    "satellites": [
+      {
+        "norad": "43874",
+        "name": "TJS-3"
+      },
+      {
+        "norad": "58204",
+        "name": "TJS-10"
+      }
+    ],
+    "start": "2023-11-01T00:00:00Z",
+    "end": "2023-11-30T23:59:59Z"
+  },
+  "E-057": {
+    "satellites": [
+      {
+        "norad": "55131",
+        "name": "SHIJIAN-23 (SJ-23)"
+      },
+      {
+        "norad": "62804",
+        "name": "TJS-14"
+      }
+    ],
+    "start": "2025-10-15T00:00:00Z",
+    "end": "2025-10-17T23:59:59Z"
+  },
+  "E-060": {
+    "satellites": [
+      {
+        "norad": "68762",
+        "name": "COSMOS 2612"
+      },
+      {
+        "norad": "59103",
+        "name": "ICEYE-X36"
+      }
+    ],
+    "start": "2026-09-30T00:00:00Z",
+    "end": "2026-09-30T23:59:59Z"
+  },
+  "E-061": {
+    "satellites": [
+      {
+        "norad": "27664",
+        "name": "XSS-10"
+      },
+      {
+        "norad": "27665",
+        "name": "DELTA 2 R/B(1)"
+      }
+    ],
+    "start": "2003-01-30T00:00:00Z",
+    "end": "2003-01-30T23:59:59Z"
+  },
+  "E-063": {
+    "satellites": [
+      {
+        "norad": "36599",
+        "name": "PRISMA (MANGO)"
+      },
+      {
+        "norad": "36827",
+        "name": "PRISMA (TANGO)"
+      }
+    ],
+    "start": "2010-08-01T00:00:00Z",
+    "end": "2012-09-30T23:59:59Z"
+  },
+  "E-064": {
+    "satellites": [
+      {
+        "norad": "39765",
+        "name": "COSMOS 2499 (RS47)"
+      },
+      {
+        "norad": "39764",
+        "name": "BREEZE-KM R/B"
+      }
+    ],
+    "start": "2014-11-01T00:00:00Z",
+    "end": "2015-01-31T23:59:59Z"
+  },
+  "E-065": {
+    "satellites": [
+      {
+        "norad": "40555",
+        "name": "COSMOS 2504"
+      },
+      {
+        "norad": "40556",
+        "name": "BREEZE-KM R/B"
+      }
+    ],
+    "start": "2015-04-01T00:00:00Z",
+    "end": "2015-10-31T23:59:59Z"
+  },
+  "E-067": {
+    "satellites": [
+      {
+        "norad": "42798",
+        "name": "COSMOS 2519"
+      },
+      {
+        "norad": "42919",
+        "name": "COSMOS 2521"
+      }
+    ],
+    "start": "2017-10-11T00:00:00Z",
+    "end": "2018-04-30T23:59:59Z"
+  },
+  "E-068": {
+    "satellites": [
+      {
+        "norad": "64627",
+        "name": "OBJECT C"
+      },
+      {
+        "norad": "53323",
+        "name": "COSMOS 2558"
+      }
+    ],
+    "start": "2025-08-02T00:00:00Z",
+    "end": "2025-08-02T23:59:59Z"
+  },
+  "E-069": {
+    "satellites": [
+      {
+        "norad": "39634",
+        "name": "SENTINEL-1A"
+      },
+      {
+        "norad": "26033",
+        "name": "ACRIMSAT"
+      }
+    ],
+    "start": "2014-04-04T00:00:00Z",
+    "end": "2014-04-05T23:59:59Z"
+  },
+  "E-071": {
+    "satellites": [
+      {
+        "norad": "41745",
+        "name": "USA 271"
+      },
+      {
+        "norad": "30794",
+        "name": "SKYNET 5A"
+      }
+    ],
+    "start": "2025-09-04T00:00:00Z",
+    "end": "2025-09-12T23:59:59Z"
+  }
+}

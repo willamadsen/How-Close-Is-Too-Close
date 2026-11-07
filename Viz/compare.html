@@ -1,19 +1,52 @@
 <!DOCTYPE html>
 <!-- WORK IN PROGRESS: this is a working copy that is changing often. Expect unfinished features and breaking changes. -->
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Compare two satellites</title>
+  <title>Episode Simulation</title>
   <!-- Reuse the original page's styling so both pages look the same -->
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <!-- The side panel. Everything with an id="..." is something compare.js reads or updates. -->
   <aside id="ui">
-    <h1>Compare two satellites</h1>
+    <h1>Episode Simulation</h1>
     <p class="wipNote">Work in progress: this page is a working copy and changes often.</p>
-    <p class="introText">Pick two satellites and a time window. Orbits are computed from the TLE closest in time to each moment.</p>
+    <p class="introText">Pick two satellites and a time window. Orbits are computed from the TLE closest in time to each
+      moment.</p>
+
+     <hr>
+
+  <!-- Which satellites are being modeled, and which TLE is in use right now -->
+  <section class="panelSection">
+    <div class="sectionTitle">Now modeling</div>
+    <div id="identity"></div>
+  </section>
+
+  <!-- The two dropdown menus. compare.js fills in the satellite names. -->
+    <section class="panelSection">
+      <div class="pairPicker satPicker">
+        <div>
+          <label for="satA"><span class="sourceDot slotA"></span> <span id="nameA">Satellite A</span></label>
+          <select id="satA"></select>
+        </div>
+        <div>
+          <label for="satB"><span class="sourceDot slotB"></span> <span id="nameB">Satellite B</span></label>
+          <select id="satB"></select>
+        </div>
+      </div>
+      <div id="rangeNote" class="methodNote"></div>
+            <!-- Only when a link opened an incident: its ID, and buttons to switch pairs if it has three satellites -->
+      <div id="caseBox" class="caseBox" hidden>
+        <div id="caseTitle" class="sectionTitle"></div>
+        <div id="casePairs" class="casePairs"></div>
+      </div>
+    </section>
+
+    <hr>
 
     <!-- Satellite lookup: type any identifier, get the satellite's name -->
     <section class="panelSection">
@@ -32,24 +65,74 @@
 
     <hr>
 
-    <!-- The two dropdown menus. compare.js fills in the satellite names. -->
     <section class="panelSection">
-      <div class="pairPicker satPicker"> 
-        <div>
-          <label for="satA"><span class="sourceDot slotA"></span> <span id="nameA">Satellite A</span></label>
-          <select id="satA"></select>
+      <div id="separationTitle" class="sectionTitle">Separation between A and B</div>
+      <!-- Camera view: the whole Earth, or zoomed in with satellite A at the centre -->
+      <div class="viewSwitch" aria-label="Camera view">
+        <button id="earthView" class="viewSwitchOption activeViewSwitch" type="button">Full Earth</button>
+        <button id="relativeView" class="viewSwitchOption" type="button">Relative motion</button>
+      </div>
+      <!-- Relative motion only: which satellite sits at the centre -->
+      <div id="centreSwitch" class="viewSwitch centreSwitch" aria-label="Centre the relative view on" hidden>
+        <button id="centreA" class="viewSwitchOption activeViewSwitch" type="button"><span
+            class="sourceDot slotA"></span> <span id="centreNameA">Satellite A</span></button>
+        <button id="centreB" class="viewSwitchOption" type="button"><span class="sourceDot slotB"></span> <span
+            id="centreNameB">Satellite B</span></button>
+      </div>
+      <div id="viewNote" class="methodNote"></div>
+      <div class="statsGrid">
+        <div class="statBlock">
+          <div id="rangeStat" class="statNumber">—</div>
+          <div class="statLabel">Distance Apart</div>
         </div>
-        <div>
-          <label for="satB"><span class="sourceDot slotB"></span> <span id="nameB">Satellite B</span></label>
-          <select id="satB"></select>
+                <div class="statBlock">
+          <div id="speedStat" class="statNumber">—</div>
+          <div class="statLabel">Relative Speed</div>
+        </div>
+        <div class="statBlock">
+          <div id="timeDisplay" class="statNumber small">—</div>
+          <div class="statLabel">Animated UTC time</div>
         </div>
       </div>
-      <!-- Date pickers. Their allowed range is set from the TLE data. -->
-      <label class="overlapToggle">
-        <input id="useOverlap" type="checkbox" checked>
-        Only use dates where both satellites have TLEs
-      </label>
-      <div class="pairPicker dateRange">
+      <canvas id="separationChart" width="300" height="150"
+        aria-label="Separation distance over the last two hours"></canvas>
+      <canvas id="speedChart" width="300" height="150"
+        aria-label="Relative speed over the last two hours"></canvas>
+      <!-- Closest approach in the chosen time window. compare.js fills this in. -->
+      <div id="closestApproach" class="closestApproach" hidden>
+        <div class="statsGrid">
+          <div class="statBlock">
+            <div id="caDistance" class="statNumber">—</div>
+            <div class="statLabel">Closest approach</div>
+          </div>
+          <div class="statBlock">
+            <div id="caTime" class="statNumber small">—</div>
+            <div class="statLabel">When (UTC)</div>
+          </div>
+           <div class="statBlock">
+            <div id="caSpeed" class="statNumber">—</div>
+            <div class="statLabel">Relative speed at closest approach</div>
+          </div>    
+        </div>
+        <div id="caDetails" class="methodNote"></div>
+        <button id="caViewBtn" class="caViewBtn" type="button">View closest approach</button>
+      </div>
+    </section>
+
+    <!-- Time window, time slider, play button and speed menu, pinned to the bottom of the panel -->
+    <section class="playbackSection">
+      <!-- Time window: which dates to model. The Start/End pickers only show for "Custom dates". -->
+      <div class="windowPicker">
+        <label for="windowMode">Time window</label>
+        <select id="windowMode">
+          <option value="case" disabled>Reported period</option>
+          <option value="caseWeek" disabled>Reported period ± 1 week</option>
+          <option value="overlap" selected>Dates both satellites have TLEs</option>
+          <option value="all">All TLE dates</option>
+          <option value="custom">Custom dates…</option>
+        </select>
+      </div>
+      <div id="customDates" class="pairPicker dateRange" hidden>
         <div>
           <label for="startTime">Start (UTC)</label>
           <input id="startTime" type="datetime-local" step="60">
@@ -59,50 +142,6 @@
           <input id="endTime" type="datetime-local" step="60">
         </div>
       </div>
-      <div id="rangeNote" class="methodNote"></div>
-    </section>
-
-    <hr>
-
-    <section class="panelSection">
-<div id="separationTitle" class="sectionTitle">Separation between A and B</div>
-      <!-- Camera view: the whole Earth, or zoomed in with satellite A at the centre -->
-      <div class="viewSwitch" aria-label="Camera view">
-        <button id="earthView" class="viewSwitchOption activeViewSwitch" type="button">Full Earth</button>
-        <button id="relativeView" class="viewSwitchOption" type="button">Relative motion</button>
-      </div>
-            <!-- Relative motion only: which satellite sits at the centre -->
-      <div id="centreSwitch" class="viewSwitch centreSwitch" aria-label="Centre the relative view on" hidden>
-        <button id="centreA" class="viewSwitchOption activeViewSwitch" type="button"><span class="sourceDot slotA"></span> <span id="centreNameA">Satellite A</span></button>
-        <button id="centreB" class="viewSwitchOption" type="button"><span class="sourceDot slotB"></span> <span id="centreNameB">Satellite B</span></button>
-      </div>
-      <div id="viewNote" class="methodNote"></div>
-      <div class="statsGrid">
-        <div class="statBlock"><div id="rangeStat" class="statNumber">—</div><div class="statLabel">Distance apart</div></div>
-        <div class="statBlock"><div id="timeDisplay" class="statNumber small">—</div><div class="statLabel">Animated UTC time</div></div>
-      </div>
-      <canvas id="separationChart" width="300" height="150" aria-label="Separation distance over the last two hours"></canvas>
-            <!-- Closest approach in the chosen time window. compare.js fills this in. -->
-      <div id="closestApproach" class="closestApproach" hidden>
-        <div class="statsGrid">
-          <div class="statBlock"><div id="caDistance" class="statNumber">—</div><div class="statLabel">Closest approach</div></div>
-          <div class="statBlock"><div id="caTime" class="statNumber small">—</div><div class="statLabel">When (UTC)</div></div>
-        </div>
-        <div id="caDetails" class="methodNote"></div>
-        <button id="caViewBtn" class="caViewBtn" type="button">View closest approach</button>
-      </div>
-    </section>
-
-    <hr>
-
-    <!-- Which satellites are being modeled, and which TLE is in use right now -->
-    <section class="panelSection">
-      <div class="sectionTitle">Now modeling</div>
-      <div id="identity"></div>
-    </section>
-
-    <!-- Play button, speed menu and time slider, pinned to the bottom of the panel -->
-        <section class="playbackSection">
       <div class="timeRow">
         <span id="sliderStart" class="sliderDate">—</span>
         <div class="sliderWrap">
@@ -125,72 +164,427 @@
   </aside>
 
   <div id="cameraControls">
+    <!-- Link back to the Google Sheet of incidents -->
+    <a id="sheetBtn" class="cameraBtn" title="Open the incident sheet" aria-label="Open the incident sheet"
+      href="https://docs.google.com/spreadsheets/d/1IEQ3tmerXXxEty8BcZeaonWhQbHUfA2Z5b44IuCsQ8I/edit?gid=0#gid=0"
+      target="_blank" rel="noopener">
+      <img src="assets/espl-github-icon.png" alt="">
+    </a>
     <button id="zoomInBtn" class="cameraBtn" title="Zoom in">+</button>
     <button id="zoomOutBtn" class="cameraBtn" title="Zoom out">−</button>
     <button id="resetBtn" class="cameraBtn" title="Reset view">⌂</button>
     <!-- Relative motion only: show or hide the radial / along-track / cross-track axes -->
-    <button id="axesBtn" class="cameraBtn axesBtn" title="Show or hide direction axes (radial, along-track, cross-track)" hidden>
+    <button id="axesBtn" class="cameraBtn axesBtn"
+      title="Show or hide direction axes (radial, along-track, cross-track)" hidden>
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-        <path d="M6 18 L6 5 M6 18 L19 18 M6 18 L15 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M6 18 L6 5 M6 18 L19 18 M6 18 L15 9" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" />
       </svg>
     </button>
 
   </div>
   <div id="brand"><img src="assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
-
+    
   <!-- A few styles only this page needs -->
   <style>
-    .pairPicker { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .pairPicker label { display:flex; align-items:center; gap:6px; }
-        .satPicker { grid-template-columns:1fr; gap:8px; }   /* A and B stacked, so long names fit */
-    .wipNote { margin:4px 0 8px; padding:4px 8px; border-radius:6px; background:#fff4d6; color:#7a5a00; font-size:11px; font-weight:650; }
-    .overlapToggle { display:flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:#444; cursor:pointer; }
-    .overlapToggle input { margin:0; }
-    .dateRange { margin-top:6px; grid-template-columns:1fr; gap:6px; }
-    .dateRange > div { display:grid; grid-template-columns:78px 1fr; align-items:center; }
-    .dateRange label { margin:0; }
-    .dateRange input { width:100%; min-width:0; height:32px; padding:0 6px; border:1px solid #ccc; border-radius:8px; color:#444; font:inherit; font-size:12px; }
-    .sourceDot.slotA { background:#eaaa00; }
-    .sourceDot.slotB { background:#7a7a7a; }
-    .speedSelect { width:auto; height:27px; padding:0 4px; font-size:11px; }
-    .identityCard { padding:8px 0; border-top:1px solid #eee; font-size:11px; line-height:1.4; }
-    .identityCard:first-child { border-top:0; padding-top:0; }
-    .identityMeta { color:#777; font-variant-numeric:tabular-nums; }
-    .tleAge.stale { color:#b00020; font-weight:700; }
-    .tleAge.aging { color:#9b6d00; font-weight:700; }
-    .dataWarning { margin-top:3px; color:#9b6d00; }
-    .lookupRow { display:flex; gap:6px; }
-    .lookupRow input { flex:1; min-width:0; height:32px; padding:0 8px; border:1px solid #ccc; border-radius:8px; font:inherit; font-size:12px; }
-    .lookupRow button { height:32px; padding:0 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
-    .lookupRow button:hover { background:#f7f7f7; }
-    #lookupResult { white-space: pre-line; }
+    .pairPicker {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pairPicker label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .satPicker {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    /* A and B stacked, so long names fit */
+    .wipNote {
+      margin: 4px 0 8px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #fff4d6;
+      color: #7a5a00;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .overlapToggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #444;
+      cursor: pointer;
+    }
+
+    .overlapToggle input {
+      margin: 0;
+    }
+
+    .dateRange {
+      margin-top: 6px;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .dateRange>div {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      align-items: center;
+    }
+
+    .dateRange label {
+      margin: 0;
+    }
+
+    .dateRange input {
+      width: 100%;
+      min-width: 0;
+      height: 32px;
+      padding: 0 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      color: #444;
+      font: inherit;
+      font-size: 12px;
+    }
+
+    .sourceDot.slotA {
+      background: #eaaa00;
+    }
+
+    .sourceDot.slotB {
+      background: #7a7a7a;
+    }
+
+    .speedSelect {
+      width: auto;
+      height: 27px;
+      padding: 0 4px;
+      font-size: 11px;
+    }
+
+    .identityCard {
+      padding: 8px 0;
+      border-top: 1px solid #eee;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .identityCard:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .identityMeta {
+      color: #777;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tleAge.stale {
+      color: #b00020;
+      font-weight: 700;
+    }
+
+    .tleAge.aging {
+      color: #9b6d00;
+      font-weight: 700;
+    }
+
+    .dataWarning {
+      margin-top: 3px;
+      color: #9b6d00;
+    }
+
+    .lookupRow {
+      display: flex;
+      gap: 6px;
+    }
+
+    .lookupRow input {
+      flex: 1;
+      min-width: 0;
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 12px;
+    }
+
+    .lookupRow button {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .lookupRow button:hover {
+      background: #f7f7f7;
+    }
+
+    #lookupResult {
+      white-space: pre-line;
+    }
+
     /* .lookupRow sets display:flex, which would override "hidden", so say explicitly that hidden means hidden */
-    #lookupActions[hidden] { display: none; }
-        .centreSwitch { margin-top:6px; }
-    .centreSwitch[hidden] { display:none; }   /* .viewSwitch sets display:flex, which would override "hidden" */
-    .cameraBtn.isOn { color:#fff; background:#555; }   /* the axes button when the axes are showing */
-        .axesBtn { display:flex; align-items:center; justify-content:center; }   /* centre the icon in the button */
-    .axesBtn[hidden] { display:none; }   /* display:flex would otherwise override "hidden" */
-    .centreSwitch .viewSwitchOption { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
-    #lookupActions { margin-top: 6px; }
-    #lookupActions button { display:inline-flex; align-items:center; gap:6px; }
-        .closestApproach { margin-top:12px; padding-top:10px; border-top:1px solid #eee; }
-    .caViewBtn { width:100%; height:32px; margin-top:8px; border:1px solid #ccc; border-radius:8px; background:#fff; font:inherit; font-size:12px; font-weight:650; cursor:pointer; }
-    .caViewBtn:hover { background:#f7f7f7; }
-        .sliderWrap { position:relative; flex:1; min-width:0; display:flex; }
-    .sliderWrap #timelineSlider { width:100%; }
-    .sliderDate { font-size:10px; color:#777; white-space:nowrap; }
-    .sliderTip { position:absolute; bottom:calc(100% + 6px); transform:translateX(-50%); padding:3px 6px; border-radius:5px; background:#333; color:#fff; font-size:11px; white-space:nowrap; pointer-events:none; }
-    .sliderTip[hidden] { display:none; }
-        .playbackSection { flex-direction:column; align-items:stretch; gap:6px; }
-    .timeRow, .controlRow { display:flex; align-items:center; gap:8px; }
-        .sliderNow { flex:1; font-size:11px; color:#555; font-variant-numeric:tabular-nums; }
+    #lookupActions[hidden] {
+      display: none;
+    }
+
+    .centreSwitch {
+      margin-top: 6px;
+    }
+
+    .centreSwitch[hidden] {
+      display: none;
+    }
+
+    /* .viewSwitch sets display:flex, which would override "hidden" */
+    .cameraBtn.isOn {
+      color: #fff;
+      background: #555;
+    }
+
+    /* the axes button when the axes are showing */
+    .axesBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* centre the icon in the button */
+    .axesBtn[hidden] {
+      display: none;
+    }
+
+    #sheetBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    #sheetBtn img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+
+    /* display:flex would otherwise override "hidden" */
+    .centreSwitch .viewSwitchOption {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #lookupActions {
+      margin-top: 6px;
+    }
+
+    #lookupActions button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .closestApproach {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+        #speedChart {
+      width: 100%;
+      height: 150px;
+      margin-top: 10px;
+    }
+
+    .caseBox {
+      margin-top: 10px;
+    }
+
+    .casePairs {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .casePairs button {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #444;
+      font: inherit;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .casePairs button.activePair {
+      border-color: #333;
+      background: #333;
+      color: #fff;
+    }
+
+    .caViewBtn {
+      width: 100%;
+      height: 32px;
+      margin-top: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .caViewBtn:hover {
+      background: #f7f7f7;
+    }
+
+    .sliderWrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+    }
+
+    .sliderWrap #timelineSlider {
+      width: 100%;
+    }
+
+    .sliderDate {
+      font-size: 10px;
+      color: #777;
+      white-space: nowrap;
+    }
+
+    .sliderTip {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      transform: translateX(-50%);
+      padding: 3px 6px;
+      border-radius: 5px;
+      background: #333;
+      color: #fff;
+      font-size: 11px;
+            white-space: pre;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .sliderTip[hidden] {
+      display: none;
+    }
+
+    /* Keep the title at the top of the panel while scrolling */
+    #ui h1 {
+      position: sticky;
+      top: -16px;
+      z-index: 2;
+      margin: -16px -16px 8px;
+      padding: 16px 16px 8px;
+      border-bottom: 1px solid #ddd;
+      background: rgba(255, 255, 255, .97);
+    }
+
+    .playbackSection {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .timeRow,
+    .controlRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sliderNow {
+      flex: 1;
+      font-size: 11px;
+      color: #555;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .windowPicker {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    #customDates[hidden] {
+      display: none;
+    }
+
+    /* In the playback section, the section's own gap spaces the rows, so no extra space above */
+    .playbackSection .windowPicker {
+      margin-top: 0;
+    }
+        /* The time bar, drawn by us instead of the browser so part of the track can be shaded.
+       --bandStart and --bandEnd (set by compare.js) mark the reported period: 0% to 0% = no band. */
+    #timelineSlider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 16px;
+      background: transparent;
+      --bandStart: 0%;
+      --bandEnd: 0%;
+    }
+    #timelineSlider::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(to right, #ddd var(--bandStart), #888 var(--bandStart) var(--bandEnd), #ddd var(--bandEnd));
+    }
+    #timelineSlider::-moz-range-track {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(to right, #ddd var(--bandStart), #888 var(--bandStart) var(--bandEnd), #ddd var(--bandEnd));
+    }
+    #timelineSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      margin-top: -5px;
+      border-radius: 50%;
+      background: #333;
+    }
+    #timelineSlider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: 0;
+      border-radius: 50%;
+      background: #333;
+    }
   </style>
 
   <!-- satellite.js does the SGP4 orbit math. It is a classic script that creates a global "satellite" object. -->
   <script src="vendor/satellite/satellite.min.js"></script>
   <!-- Tell the browser where to find the 3D and map libraries, then load our code -->
-  <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/","topojson-client":"./vendor/topojson/topojson-client.js"}}</script>
+  <script
+    type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/","topojson-client":"./vendor/topojson/topojson-client.js"}}</script>
   <script type="module" src="compare.js"></script>
 </body>
+
 </html>
