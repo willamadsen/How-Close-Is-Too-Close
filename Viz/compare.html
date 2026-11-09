@@ -100,22 +100,22 @@
         aria-label="Relative speed over the last two hours"></canvas>
       <!-- Closest approach in the chosen time window. compare.js fills this in. -->
       <div id="closestApproach" class="closestApproach" hidden>
+        <button id="caViewBtn" class="caViewBtn" type="button">View closest approach</button>
         <div class="statsGrid">
-          <div class="statBlock">
+          <div class="statBlock caHover">
             <div id="caDistance" class="statNumber">—</div>
             <div class="statLabel">Closest approach</div>
           </div>
-          <div class="statBlock">
+          <div class="statBlock caHover">
             <div id="caTime" class="statNumber small">—</div>
             <div class="statLabel">When (UTC)</div>
           </div>
-           <div class="statBlock">
+          <div class="statBlock">
             <div id="caSpeed" class="statNumber">—</div>
             <div class="statLabel">Relative speed at closest approach</div>
-          </div>    
+          </div>
         </div>
-        <div id="caDetails" class="methodNote"></div>
-        <button id="caViewBtn" class="caViewBtn" type="button">View closest approach</button>
+        <div id="caDetails" class="caDetails"></div>
       </div>
     </section>
 
@@ -414,7 +414,7 @@
       height: 150px;
       margin-top: 10px;
     }
-    
+
     .flagIcon {
       height: 0.9em;
       margin-right: 3px;
@@ -450,11 +450,35 @@
       background: #333;
       color: #fff;
     }
+    /* The closest-approach note: a pop-up when the mouse is over the distance or the time */
+    .closestApproach {
+      position: relative;
+    }
+
+    .caDetails {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(100% - 44px);   /* opens upward, just above the numbers, so the bottom bar can't hide it */
+      z-index: 5;
+      padding: 7px 9px;
+      border-radius: 6px;
+      background: #333;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+
+    .closestApproach:has(.caHover:hover) .caDetails {
+      display: block;
+    }
 
     .caViewBtn {
       width: 100%;
       height: 32px;
-      margin-top: 8px;
+      margin-top: 4px;
       border: 1px solid #ccc;
       border-radius: 8px;
       background: #fff;

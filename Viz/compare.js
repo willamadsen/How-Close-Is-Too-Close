@@ -56,8 +56,8 @@ const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amb
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
 const CASE_PAD_DAYS = 7;            // "Reported period ± 1 week" adds this many days either side
-const DOT_SCREEN_SIZE = 0.022       // 0.022 = 2.2% of the screen height at any given moment
-const LABEL_SCREEN_SIZE = 0.03      // name labels are 3% of the screen height at any given moment
+const DOT_SCREEN_SIZE = 0.032       // 0.032 = 3.2% of the screen height at any given moment
+const LABEL_SCREEN_SIZE = 0.042      // name labels are 4.2% of the screen height at any given moment
 const DASH_SCREEN_SIZE = 0.01;      // each dash (and gap) in a dashed orbit line is 1% of the screen height
 
 // Each "slot" (A or B) gets its own colors, no matter which satellite is in it.
@@ -350,7 +350,9 @@ function dotTexture(fillColor) {
   ctx.lineWidth = 12;
   ctx.strokeStyle = "#000";
   ctx.stroke();
-  return new THREE.CanvasTexture(canvas);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;     // the colours were picked as normal screen colours
+  return texture;
 }
 
 const dots = {};    // dots.A and dots.B
@@ -427,8 +429,9 @@ const version = ++labelVersion[slot];
   ctx.fillStyle = "#333";
   ctx.textBaseline = "middle";
   ctx.fillText(text, x, 48);
-  labels[slot].material.map?.dispose();
+  labels[slot].material.map?.dispose();   // throw away the old texture to free memory
   labels[slot].material.map = new THREE.CanvasTexture(canvas);
+  labels[slot].material.map.colorSpace = THREE.SRGBColorSpace;   // show #333 as a true dark grey
   labels[slot].material.needsUpdate = true;
 }
 
