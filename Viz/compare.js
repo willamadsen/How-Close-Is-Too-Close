@@ -56,8 +56,8 @@ const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amb
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
 const CASE_PAD_DAYS = 7;            // "Reported period ± 1 week" adds this many days either side
-const DOT_SCREEN_SIZE = 0.032       // 0.032 = 3.2% of the screen height at any given moment
-const LABEL_SCREEN_SIZE = 0.042      // name labels are 4.2% of the screen height at any given moment
+const DOT_SCREEN_SIZE = 0.022       // 0.032 = 3.2% of the screen height at any given moment
+const LABEL_SCREEN_SIZE = 0.03      // name labels are 4.2% of the screen height at any given moment
 const DASH_SCREEN_SIZE = 0.01;      // each dash (and gap) in a dashed orbit line is 1% of the screen height
 
 // Each "slot" (A or B) gets its own colors, no matter which satellite is in it.
@@ -844,6 +844,7 @@ async function openCase(id) {
   $("windowMode").value = "caseWeek";
   $("caseTitle").textContent = `Incident ${id}`;
   $("caseBox").hidden = false;
+  $("findSection").open = false;        // the link already chose the satellites, so tuck the finder away
   await setPair(caseNorads[0], caseNorads[1]);
 }
 

@@ -26,18 +26,7 @@
     <div id="identity"></div>
   </section>
 
-  <!-- The two dropdown menus. compare.js fills in the satellite names. -->
-    <section class="panelSection">
-      <div class="pairPicker satPicker">
-        <div>
-          <label for="satA"><span class="sourceDot slotA"></span> <span id="nameA">Satellite A</span></label>
-          <select id="satA"></select>
-        </div>
-        <div>
-          <label for="satB"><span class="sourceDot slotB"></span> <span id="nameB">Satellite B</span></label>
-          <select id="satB"></select>
-        </div>
-      </div>
+  <section class="panelSelection"> 
       <div id="rangeNote" class="methodNote"></div>
             <!-- Only when a link opened an incident: its ID, and buttons to switch pairs if it has three satellites -->
       <div id="caseBox" class="caseBox" hidden>
@@ -48,9 +37,9 @@
 
     <hr>
 
-    <!-- Satellite lookup: type any identifier, get the satellite's name -->
-    <section class="panelSection">
-      <div class="sectionTitle">Find a satellite</div>
+    <!-- Find a satellite: opens and closes when its title is clicked ("details" does this by itself). Inside: the lookup box, then the two dropdown menus. -->
+    <details id="findSection" class="panelSection findSection" open>
+      <summary class="sectionTitle">Find a satellite</summary>
       <div class="lookupRow">
         <input id="lookupInput" type="text" placeholder="NORAD number, designator, or name">
         <button id="lookupBtn" type="button">Look up</button>
@@ -61,7 +50,18 @@
         <button id="loadAsA" type="button"><span class="sourceDot slotA"></span> Load as A</button>
         <button id="loadAsB" type="button"><span class="sourceDot slotB"></span> Load as B</button>
       </div>
-    </section>
+          <!-- The two dropdown menus. compare.js fills in the satellite names. -->
+      <div class="pairPicker satPicker">
+        <div>
+          <label for="satA"><span class="sourceDot slotA"></span> <span id="nameA">Satellite A</span></label>
+          <select id="satA"></select>
+        </div>
+        <div>
+          <label for="satB"><span class="sourceDot slotB"></span> <span id="nameB">Satellite B</span></label>
+          <select id="satB"></select>
+        </div>
+      </div>
+    </details>
 
     <hr>
 
@@ -303,6 +303,34 @@
       margin-top: 3px;
       color: #9b6d00;
     }
+    
+    /* Find a satellite: a title with a small arrow that turns when the section is open */
+    .findSection summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .findSection summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .findSection summary::before {
+      content: "▸";
+      font-size: 13px;
+      transition: transform .15s;
+    }
+
+    .findSection[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    .findSection .satPicker {
+      margin-top: 12px;
+    }
+
 
     .lookupRow {
       display: flex;
