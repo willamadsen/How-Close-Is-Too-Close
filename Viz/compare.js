@@ -55,6 +55,8 @@ const CHART_MINUTES = 120;         // The separation chart shows the last two ho
 const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amber.
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
+const TLE_FLASH_MS = 1500;           // how long an orbit line flashes when its satellite switches TLE
+const TLE_FLASH_COLOR = 0xe4572e;    // the flash colour (orange-red)
 const CASE_PAD_DAYS = 7;            // "Reported period ± 1 week" adds this many days either side
 const DOT_SCREEN_SIZE = 0.022       // 0.032 = 3.2% of the screen height at any given moment
 const LABEL_SCREEN_SIZE = 0.03      // name labels are 4.2% of the screen height at any given moment
@@ -94,6 +96,8 @@ const pair = { A: null, B: null };   // NORAD numbers of the satellites in slots
 let startMs = 0, endMs = 0;  // The chosen time window
 let reportedPeriod = null;   // the case's reported start and end, { start, end } in ms, once a case is loaded (null = none)
 let caseNorads = [];         // NORAD numbers of the satellites in the case opened from the link ([] = none)
+const lastTleIndex = { A: null, B: null };   // the TLE each satellite used last time, to notice a switch
+const flashUntil = { A: 0, B: 0 };           // when each satellite's orbit-line flash ends (in performance.now() time)
 let currentMs = 0;           // The moment currently shown
 let playing = false;
 let lastFrameTime = performance.now();
@@ -414,9 +418,13 @@ async function setLabelText(slot, text, flags = []) {
 const version = ++labelVersion[slot];
   const images = await Promise.all(flags.map(loadFlag));
   if (version !== labelVersion[slot]) return;    // the label changed while the flags were loading
+  // Draw at the label's real size on screen (in screen pixels), so nothing gets stretched or squashed.
+  // The drawing below is written for a 96-pixel-tall label; "sharpness" scales it to the real size.
+  const sharpness = Math.max(1, LABEL_SCREEN_SIZE * renderer.domElement.height / 96);
   const canvas = document.createElement("canvas");
-  canvas.width = 512; canvas.height = 96;
+  canvas.width = Math.round(512 * sharpness); canvas.height = Math.round(96 * sharpness);
   const ctx = canvas.getContext("2d");
+  ctx.scale(sharpness, sharpness);
   let x = 8;
   for (const image of images) {                  // each flag 40 px tall, as wide as its shape needs
     const width = 40 * image.naturalWidth / image.naturalHeight;
@@ -432,6 +440,8 @@ const version = ++labelVersion[slot];
   labels[slot].material.map?.dispose();   // throw away the old texture to free memory
   labels[slot].material.map = new THREE.CanvasTexture(canvas);
   labels[slot].material.map.colorSpace = THREE.SRGBColorSpace;   // show #333 as a true dark grey
+  labels[slot].material.map.minFilter = THREE.LinearFilter;   // shown at its own size, so no blurry shrinking
+  labels[slot].material.map.generateMipmaps = false;
   labels[slot].material.needsUpdate = true;
 }
 
@@ -485,6 +495,12 @@ function updateScene() {
     const norad = pair[slot];
     const lib = library[norad];
     const tleIndex = nearestTleIndex(lib, currentMs);
+    // While playing, a change of TLE starts a flash (jumps with the slider or buttons don't)
+    if (playing && lastTleIndex[slot] !== null && tleIndex !== lastTleIndex[slot]) {
+      flashUntil[slot] = performance.now() + TLE_FLASH_MS;
+    }
+    lastTleIndex[slot] = tleIndex;
+
     const r = positionAt(norad, currentMs, tleIndex);
     positions[slot] = r;
 
@@ -691,7 +707,15 @@ function fullEarthFraming() {
   const average = normals.reduce((sum, n) => sum.add(n), new THREE.Vector3()).normalize();
   if (average.lengthSq() === 0) average.set(0, 0.4, 1).normalize();
   if (average.z < 0) average.negate();
-  return { position: average.multiplyScalar(10.2), target: new THREE.Vector3(0, 0, 0) };
+   // Far enough back to fit Earth (10.2) or the highest satellite's orbit with some room around it
+  // (at GEO that's about 6.6 Earth radii out, well outside the Earth-sized picture)
+  let farthest = 1;
+  for (const slot of ["A", "B"]) {
+    const state = pair[slot] && stateAt(pair[slot], currentMs);
+    if (state) farthest = Math.max(farthest, eciToScene(state.r).length());
+  }
+  const fitOrbits = 1.3 * farthest / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  return { position: average.multiplyScalar(Math.max(10.2, fitOrbits)), target: new THREE.Vector3(0, 0, 0) };
 }
 
 // Glide the camera to the framing over 0.9 seconds instead of jumping.
@@ -734,6 +758,7 @@ function dataLimits() {
 // once both are loaded, the dates are set and the pair is modeled.
 async function setPair(noradA, noradB, requestedStart = null, requestedEnd = null) {
   pair.A = noradA || null; pair.B = noradB || null;      // "" (the Choose… option) becomes null
+  lastTleIndex.A = lastTleIndex.B = null;                 // new satellites: nothing to compare against yet
     if (caseNorads.length && ![pair.A, pair.B].every(norad => caseNorads.includes(norad))) closeCase();   // left the incident
   $("rangeNote").textContent = "Loading TLEs…";
 
@@ -846,6 +871,7 @@ async function openCase(id) {
   $("caseBox").hidden = false;
   $("findSection").open = false;        // the link already chose the satellites, so tuck the finder away
   await setPair(caseNorads[0], caseNorads[1]);
+  $("caViewBtn").click();               // start at the closest approach, with both satellites in view
 }
 
 // The user chose a satellite from outside the incident, so the reported dates no longer apply.
@@ -1041,8 +1067,10 @@ let centre = "A";                    // which satellite sits at the centre of th
 const otherSlot = () => centre === "A" ? "B" : "A";   // the satellite that moves around it
 const RELATIVE_SCALE_KM = 1000;      // in the relative view, 1 scene unit = 1,000 km (as in the original)
 const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
+const HIGH_ORBIT_TRAIL_HOURS = 24;   // GEO satellites move slowly, so show a whole day (one full orbit)
 const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
 const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
+const HIGH_ORBIT_KM = 20000;          // above this orbit radius (GEO is 42,164 km), Earth looks too small to stay in an angled view
 
 // A's own directions (each an arrow of length 1, in Earth-centred coordinates)
 function ricAxes(stateA) {
@@ -1123,9 +1151,10 @@ function drawRelative() {
   const tleOther = nearestTleIndex(library[pair[other]], currentMs);
   const points = [], colors = [];
   const faded = new THREE.Color(0xffffff), recent = new THREE.Color(0x777777);
+  const trailHours = relativeTrailHours();
   for (let i = 0; i <= RELATIVE_TRAIL_POINTS; i++) {
     const fraction = i / RELATIVE_TRAIL_POINTS;            // 0 = 4 hours ago, 1 = now
-        const p = relativePointAt(currentMs - RELATIVE_TRAIL_HOURS * 60 * MINUTE_MS * (1 - fraction), tleCentre, tleOther);
+    const p = relativePointAt(currentMs - trailHours * 60 * MINUTE_MS * (1 - fraction), tleCentre, tleOther);
     if (!p) continue;
     points.push(p);
     const color = faded.clone().lerp(recent, fraction ** 1.7);
@@ -1158,7 +1187,7 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   $("earthView").classList.toggle("activeViewSwitch", !relative);
   $("relativeView").classList.toggle("activeViewSwitch", relative);
   $("viewNote").textContent = relative
-    ? `${slotName(centre)} is at the centre and Earth is drawn to scale below it. The fading line is ${slotName(otherSlot())}'s path over the last ${RELATIVE_TRAIL_HOURS} hours.`
+    ? `${slotName(centre)} is at the centre and Earth is drawn to scale below it. The fading line is ${slotName(otherSlot())}'s path over the last ${relativeTrailHours()} hours.`
     : "";
 
   if (pair.A || pair.B) updateScene();
@@ -1179,6 +1208,23 @@ for (const slot of ["A", "B"]) { // for loop applies the sizes to both A and B
   labels[slot].scale.set(labelSize * 5.33, labelSize, 1); // the label image is 5.33 times wider than it is tall
   }
 }
+
+// How many hours of fading trail to draw: a whole day for high orbits like GEO, 4 hours lower down.
+function relativeTrailHours() {
+  const state = stateAt(pair[centre], currentMs);
+  const highOrbit = state && Math.hypot(...state.r) > HIGH_ORBIT_KM;
+  return highOrbit ? HIGH_ORBIT_TRAIL_HOURS : RELATIVE_TRAIL_HOURS;
+}
+
+// Which way the camera looks from in the relative view. For high orbits like GEO: straight down
+// from above the satellite, so Earth sits right behind it. Lower down, Earth is big enough to fill
+// the background anyway, so keep the original angle, which also shows up-and-down motion.
+function relativeViewDirection() {
+  const state = stateAt(pair[centre], currentMs);
+  const highOrbit = state && Math.hypot(...state.r) > HIGH_ORBIT_KM;
+  return highOrbit ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0.62, 1.08).normalize();
+}
+
 // Always put the centre satellite in the middle of the picture.
 // Normally: view from the original page's angle, 500 km away.
 // fitBoth (for "View closest approach"): look from the side of the line between the two
@@ -1187,7 +1233,7 @@ for (const slot of ["A", "B"]) { // for loop applies the sizes to both A and B
 function relativeFraming(fitBoth = false) {
   const centreOfFrame = new THREE.Vector3(0, 0, 0);       // the centre satellite is always at (0, 0, 0)
   if (!fitBoth) {
-    const direction = new THREE.Vector3(1, 0.62, 1.08).normalize();
+    const direction = relativeViewDirection();
     return { position: direction.multiplyScalar(RELATIVE_VIEW_DISTANCE), target: centreOfFrame };
   }
     // How far the other satellite's path reaches from the centre satellite over the last orbit
@@ -1195,14 +1241,14 @@ function relativeFraming(fitBoth = false) {
   const lib = library[pair[centre]];
   const orbitMinutes = Math.round(2 * Math.PI / satrecFor(lib, nearestTleIndex(lib, currentMs)).no);
   let reach = dots[otherSlot()].position.length();
-  const trail = relativeTrail.geometry.attributes.position;
+  const trail = relativeTrail.geometry.attributes.position
   for (let i = Math.max(0, trail.count - 1 - orbitMinutes); i < trail.count; i++) {
     reach = Math.max(reach, Math.hypot(trail.getX(i), trail.getY(i), trail.getZ(i)));
   }
   // Look from the original page's angle, far enough back that all of it fits, about 70% of the
   // way from the middle to the edge. (The camera sees tan(fov/2) units of height either side of
   // the middle for every unit of distance away.)
-  const direction = new THREE.Vector3(1, 0.62, 1.08).normalize();
+  const direction = relativeViewDirection();
   const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const distance = Math.max(reach, 0.0005) / (0.7 * halfHeightPerUnit);
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
@@ -1338,7 +1384,7 @@ $("caViewBtn").addEventListener("click", () => {
   playing = false;                                       // pause, so it stays on that moment
   $("playBtn").innerHTML = '<span class="playIcon">▶</span>';
   currentMs = closest.ms;
-  setView("relative", centre, true);                     // true = zoom so both satellites are in the frame
+  setView(view, centre, true);                     // true = zoom so both satellites are in the frame
 });
 
 $("playBtn").addEventListener("click", () => {
@@ -1386,6 +1432,7 @@ function updateRendererLayout() {
   camera.aspect = width / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(width, innerHeight);
+  if (pair.A || pair.B) updateNames();       // redraw the labels at the new screen size
 }
 addEventListener("resize", updateRendererLayout);
 updateRendererLayout();
@@ -1421,7 +1468,18 @@ function animate(now) {
     if (raw >= 1) cameraTween = null;
   }
 
-  lastFrameTime = now;
+  // Orbit lines flash for a moment when their satellite switches to a new TLE
+  for (const slot of ["A", "B"]) {
+    const colour = now < flashUntil[slot] ? TLE_FLASH_COLOR : SLOTS[slot].line;
+    trails[slot].userData.solid.color.set(colour);
+    trails[slot].userData.dashed.color.set(colour);
+  }
+  // The relative view's fading trail uses both satellites' TLEs, so it flashes for either one
+  const relativeColour = now < Math.max(flashUntil.A, flashUntil.B) ? TLE_FLASH_COLOR : 0xffffff;
+  relativeTrail.userData.solid.color.set(relativeColour);
+  relativeTrail.userData.dashed.color.set(relativeColour);
+
+lastFrameTime = now;
   controls.update();
   // Keep dashes the same size on screen at any zoom: DASH_SCREEN_SIZE of the screen height,
   // turned into scene units at the camera's distance (the same idea as the dot sizes in setView)
