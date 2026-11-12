@@ -55,8 +55,8 @@ const CHART_MINUTES = 120;         // The separation chart shows the last two ho
 const AGING_DAYS = 2;              // TLE more than 2 days from now: show in amber.
 const STALE_DAYS = 7;              // TLE more than 7 days from now: show in red.
 const MINUTE_MS = 60 * 1000, DAY_MS = 24 * 60 * MINUTE_MS;   // Times in JavaScript are in milliseconds.
-const TLE_FLASH_MS = 1500;           // how long an orbit line flashes when its satellite switches TLE
-const TLE_FLASH_COLOR = 0xe4572e;    // the flash colour (orange-red)
+const TLE_FLASH_MS = 600;           // how long an orbit line flashes when its satellite switches TLE
+const TLE_FLASH_DARKEN = 0.3;       // during a flash, lines are drawn at 30% of their usual brightness
 const CASE_PAD_DAYS = 7;            // "Reported period ± 1 week" adds this many days either side
 const DOT_SCREEN_SIZE = 0.022       // 0.032 = 3.2% of the screen height at any given moment
 const LABEL_SCREEN_SIZE = 0.03      // name labels are 4.2% of the screen height at any given moment
@@ -872,6 +872,9 @@ async function openCase(id) {
   $("findSection").open = false;        // the link already chose the satellites, so tuck the finder away
   await setPair(caseNorads[0], caseNorads[1]);
   $("caViewBtn").click();               // start at the closest approach, with both satellites in view
+  //start GEO satellite incidents at 1 hr/second to account that they move slower than satellites in LEO
+  const startState = stateAt(caseNorads[0],currentMs);
+  if (startState && Math.hypot(...startState.r) > HIGH_ORBIT_KM) $("speed").value = "3600"; //only runs when an incident link opens, chooses 1 hour/ sec which is 3600 simulated secomds per real second 
 }
 
 // The user chose a satellite from outside the incident, so the reported dates no longer apply.
@@ -1070,6 +1073,7 @@ const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
 const HIGH_ORBIT_TRAIL_HOURS = 24;   // GEO satellites move slowly, so show a whole day (one full orbit)
 const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
 const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
+const GAP_SCREEN_SHARE = 0.35;       // at the closest approach, the gap fills 35% of the way from the middle to the edge
 const HIGH_ORBIT_KM = 20000;          // above this orbit radius (GEO is 42,164 km), Earth looks too small to stay in an angled view
 
 // A's own directions (each an arrow of length 1, in Earth-centred coordinates)
@@ -1150,7 +1154,10 @@ function drawRelative() {
   const tleCentre = nearestTleIndex(library[pair[centre]], currentMs);
   const tleOther = nearestTleIndex(library[pair[other]], currentMs);
   const points = [], colors = [];
-  const faded = new THREE.Color(0xffffff), recent = new THREE.Color(0x777777);
+  // During a TLE flash the newest end of the trail turns darker. Each point is a mix of "faded" and
+  // "recent", so every point darkens in proportion to how dark it already is and the fade keeps its shape.
+  const flashing = performance.now() < Math.max(flashUntil.A, flashUntil.B);
+  const faded = new THREE.Color(0xffffff), recent = new THREE.Color(0x777777).multiplyScalar(flashing ? TLE_FLASH_DARKEN : 1);
   const trailHours = relativeTrailHours();
   for (let i = 0; i <= RELATIVE_TRAIL_POINTS; i++) {
     const fraction = i / RELATIVE_TRAIL_POINTS;            // 0 = 4 hours ago, 1 = now
@@ -1236,21 +1243,16 @@ function relativeFraming(fitBoth = false) {
     const direction = relativeViewDirection();
     return { position: direction.multiplyScalar(RELATIVE_VIEW_DISTANCE), target: centreOfFrame };
   }
-    // How far the other satellite's path reaches from the centre satellite over the last orbit
-  // (one loop of the fading path; the trail has one point per minute, newest last)
-  const lib = library[pair[centre]];
-  const orbitMinutes = Math.round(2 * Math.PI / satrecFor(lib, nearestTleIndex(lib, currentMs)).no);
-  let reach = dots[otherSlot()].position.length();
-  const trail = relativeTrail.geometry.attributes.position
-  for (let i = Math.max(0, trail.count - 1 - orbitMinutes); i < trail.count; i++) {
-    reach = Math.max(reach, Math.hypot(trail.getX(i), trail.getY(i), trail.getZ(i)));
-  }
-  // Look from the original page's angle, far enough back that all of it fits, about 70% of the
-  // way from the middle to the edge. (The camera sees tan(fov/2) units of height either side of
-  // the middle for every unit of distance away.)
+  // Same angle as always; only the distance changes. Stand back just far enough that the gap
+  // between the two satellites, as seen from this angle, fills GAP_SCREEN_SHARE of the half-height.
   const direction = relativeViewDirection();
+  const gap = dots[otherSlot()].position.clone();
+  const towardCamera = gap.dot(direction);                 // how much of the gap points at the camera
+  const gapOnScreen = gap.sub(direction.clone().multiplyScalar(towardCamera)).length();   // the part across the screen
   const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const distance = Math.max(reach, 0.0005) / (0.7 * halfHeightPerUnit);
+  // Far enough that the gap fills its share of the picture, and always well behind both satellites
+  const distance = Math.max(Math.max(gapOnScreen, 0.0005) / (GAP_SCREEN_SHARE * halfHeightPerUnit), 3 * Math.abs(towardCamera));
+
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
 // Work out the closest approach for the current window and show it in the panel.
@@ -1369,8 +1371,14 @@ $("loadAsB").addEventListener("click", () => {
 // Full Earth / Relative motion switch
 $("earthView").addEventListener("click", () => { preferredView = "earth"; setView("earth"); });
 $("relativeView").addEventListener("click", () => { preferredView = "relative"; setView("relative"); });
-$("centreA").addEventListener("click", () => setView("relative", "A"));
-$("centreB").addEventListener("click", () => setView("relative", "B"));
+// Switching which satellite is in the middle keeps the same zoom and angle; only the centre changes
+function switchCentre(slot) {
+  const offset = camera.position.clone().sub(controls.target);   // where the camera stands, measured from what it looks at
+  setView("relative", slot);
+  camera.position.copy(controls.target).add(offset);
+}
+$("centreA").addEventListener("click", () => switchCentre("A"));
+$("centreB").addEventListener("click", () => switchCentre("B"));
 // Show or hide the direction axes in the relative view
 $("axesBtn").addEventListener("click", () => {
   showAxes = !showAxes;                                   // flip on <-> off
@@ -1468,16 +1476,12 @@ function animate(now) {
     if (raw >= 1) cameraTween = null;
   }
 
-  // Orbit lines flash for a moment when their satellite switches to a new TLE
+  // Orbit lines darken for a moment when their satellite switches to a new TLE
   for (const slot of ["A", "B"]) {
-    const colour = now < flashUntil[slot] ? TLE_FLASH_COLOR : SLOTS[slot].line;
-    trails[slot].userData.solid.color.set(colour);
-    trails[slot].userData.dashed.color.set(colour);
+    const brightness = now < flashUntil[slot] ? TLE_FLASH_DARKEN : 1;
+    trails[slot].userData.solid.color.set(SLOTS[slot].line).multiplyScalar(brightness);
+    trails[slot].userData.dashed.color.set(SLOTS[slot].line).multiplyScalar(brightness);
   }
-  // The relative view's fading trail uses both satellites' TLEs, so it flashes for either one
-  const relativeColour = now < Math.max(flashUntil.A, flashUntil.B) ? TLE_FLASH_COLOR : 0xffffff;
-  relativeTrail.userData.solid.color.set(relativeColour);
-  relativeTrail.userData.dashed.color.set(relativeColour);
 
 lastFrameTime = now;
   controls.update();
