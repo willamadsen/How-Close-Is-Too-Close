@@ -528,6 +528,7 @@ function updateScene() {
   $("timeDisplay").textContent = formatTime(currentMs).replace(" UTC", "");
   $("sliderNow").textContent = formatTime(currentMs);
   $("timelineSlider").value = currentMs;
+  $("timelineSlider").style.setProperty("--progress", `${(currentMs - startMs) / (endMs - startMs) * 100}%`);   // gold "played so far" part of the time bar
 
   // Spin Earth to the right angle for this moment (Greenwich sidereal time).
   earthGroup.rotation.y = -sgp4.gstime(new Date(currentMs));
@@ -874,7 +875,7 @@ async function openCase(id) {
   $("caViewBtn").click();               // start at the closest approach, with both satellites in view
   //start GEO satellite incidents at 1 hr/second to account that they move slower than satellites in LEO
   const startState = stateAt(caseNorads[0],currentMs);
-  if (startState && Math.hypot(...startState.r) > HIGH_ORBIT_KM) $("speed").value = "3600"; //only runs when an incident link opens, chooses 1 hour/ sec which is 3600 simulated secomds per real second 
+  if (startState && Math.hypot(...startState.r) > HIGH_ORBIT_KM) $("speed").value = "3600"; updateSpeedLabel(); //only runs when an incident link opens, chooses 1 hour/ sec which is 3600 simulated secomds per real second 
 }
 
 // The user chose a satellite from outside the incident, so the reported dates no longer apply.
@@ -1426,15 +1427,31 @@ $("axesBtn").addEventListener("click", () => {
 $("caViewBtn").addEventListener("click", () => {
   if (!closest) return;
   playing = false;                                       // pause, so it stays on that moment
-  $("playBtn").innerHTML = '<span class="playIcon">▶</span>';
+  $("playBtn").innerHTML = '<span class="playIcon"></span>';
   currentMs = closest.ms;
   autoZoom = true; 
   setView(view, centre, true);                     // true = zoom so both satellites are in the frame
 });
 
+// Slower / faster arrows: step through the hidden speed menu's options and show the chosen speed
+function updateSpeedLabel() {
+  const menu = $("speed");
+  $("speedLabel").textContent = menu.selectedOptions[0].textContent;
+  $("speedDownBtn").disabled = menu.selectedIndex === 0;                      // already slowest
+  $("speedUpBtn").disabled = menu.selectedIndex === menu.options.length - 1;  // already fastest
+}
+function stepSpeed(step) {
+  const menu = $("speed");
+  menu.selectedIndex = Math.min(menu.options.length - 1, Math.max(0, menu.selectedIndex + step));
+  updateSpeedLabel();
+}
+$("speedDownBtn").addEventListener("click", () => stepSpeed(-1));
+$("speedUpBtn").addEventListener("click", () => stepSpeed(1));
+updateSpeedLabel();
+
 $("playBtn").addEventListener("click", () => {
   playing = !playing;   // "!" means "not", so this flips true <-> false
-  $("playBtn").innerHTML = playing ? "Ⅱ" : '<span class="playIcon">▶</span>';
+  $("playBtn").innerHTML = playing ? '<span class="pauseIcon"></span>' : '<span class="playIcon"></span>';
 });
 // The time bar's pop-up: the exact date and time at a point along the slider.
 // x is how far along the slider that point is, in pixels from its left edge.

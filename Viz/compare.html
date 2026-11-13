@@ -154,9 +154,13 @@
         <span id="sliderEnd" class="sliderDate">—</span>
       </div>
       <div class="controlRow">
-        <button id="playBtn" class="miniControl" title="Play / pause"><span class="playIcon">▶</span></button>
+        <button id="playBtn" class="miniControl playPauseMini" title="Play / pause" aria-label="Play / pause"><span class="playIcon"></span></button>
         <span id="sliderNow" class="sliderNow">—</span>
-        <select id="speed" class="speedSelect" title="Playback speed">
+        <button id="speedDownBtn" class="miniControl speedMini" title="Slower" aria-label="Slower"><span class="doubleTriangle doubleTriangleLeft"></span></button>
+        <span id="speedLabel" class="speedLabel">10 min/s</span>
+        <button id="speedUpBtn" class="miniControl speedMini" title="Faster" aria-label="Faster"><span class="doubleTriangle doubleTriangleRight"></span></button>
+        <!-- The speed menu is hidden: the arrow buttons step through its options, and compare.js reads its value -->
+        <select id="speed" hidden>
           <option value="60">1 min/s</option>
           <option value="600" selected>10 min/s</option>
           <option value="3600">1 hr/s</option>
@@ -267,11 +271,56 @@
       background: #7a7a7a;
     }
 
-    .speedSelect {
-      width: auto;
-      height: 27px;
-      padding: 0 4px;
+    /* Playback buttons with drawn icons, in the style of the lab's sbi-constellation-viz */
+    .playbackDock .miniControl {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+    .playbackDock .miniControl:hover { background: #f0f0f0; }
+    .playbackDock .miniControl:disabled { opacity: .3; background: transparent; cursor: default; }
+    .playPauseMini { width: 30px; }
+    .speedMini { width: 26px; }
+
+    /* Play: a triangle made from borders. Pause: two bars drawn as backgrounds. */
+    .playIcon {
+      width: 0;
+      height: 0;
+      margin-left: 2px;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 10px solid #444;
+    }
+    .pauseIcon {
+      width: 9px;
+      height: 12px;
+      background:
+        linear-gradient(#444 0 0) left / 3px 100% no-repeat,
+        linear-gradient(#444 0 0) right / 3px 100% no-repeat;
+    }
+
+    /* Slower / faster: two small triangles side by side */
+    .doubleTriangle { display: inline-flex; gap: 1px; align-items: center; }
+    .doubleTriangle::before, .doubleTriangle::after {
+      content: "";
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+    .doubleTriangleLeft::before, .doubleTriangleLeft::after { border-right: 5px solid #555; }
+    .doubleTriangleRight::before, .doubleTriangleRight::after { border-left: 5px solid #555; }
+
+    .speedLabel {
+      min-width: 52px;
       font-size: 11px;
+      color: #555;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     .identityCard {
@@ -548,7 +597,7 @@
       background: #333;
       color: #fff;
       font-size: 11px;
-            white-space: pre;
+      white-space: pre;
       text-align: center;
       pointer-events: none;
     }
@@ -631,31 +680,38 @@
       background: transparent;
       --bandStart: 0%;
       --bandEnd: 0%;
+      --progress: 0%;
     }
+    /* Three layers, top first: the reported period (a dark tint), the gold "played so far" part, the grey track */
     #timelineSlider::-webkit-slider-runnable-track {
-      height: 4px;
-      border-radius: 2px;
-      background: linear-gradient(to right, #ddd var(--bandStart), #888 var(--bandStart) var(--bandEnd), #ddd var(--bandEnd));
+      height: 3px;
+      border-radius: 999px;
+      background:
+        linear-gradient(to right, transparent var(--bandStart), rgba(0, 0, 0, .45) var(--bandStart) var(--bandEnd), transparent var(--bandEnd)),
+        linear-gradient(to right, #d6a516 var(--progress), #d8d8d8 var(--progress));
     }
     #timelineSlider::-moz-range-track {
-      height: 4px;
-      border-radius: 2px;
-      background: linear-gradient(to right, #ddd var(--bandStart), #888 var(--bandStart) var(--bandEnd), #ddd var(--bandEnd));
+      height: 3px;
+      border-radius: 999px;
+      background:
+        linear-gradient(to right, transparent var(--bandStart), rgba(0, 0, 0, .45) var(--bandStart) var(--bandEnd), transparent var(--bandEnd)),
+        linear-gradient(to right, #d6a516 var(--progress), #d8d8d8 var(--progress));
     }
+    /* The handle: a thin dark bar */
     #timelineSlider::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 14px;
+      width: 3px;
       height: 14px;
-      margin-top: -5px;
-      border-radius: 50%;
-      background: #333;
+      margin-top: -5.5px;
+      border-radius: 2px;
+      background: #111;
     }
     #timelineSlider::-moz-range-thumb {
-      width: 14px;
+      width: 3px;
       height: 14px;
       border: 0;
-      border-radius: 50%;
-      background: #333;
+      border-radius: 2px;
+      background: #111;
     }
   </style>
 
