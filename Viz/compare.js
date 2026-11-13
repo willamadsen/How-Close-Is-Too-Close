@@ -1074,7 +1074,6 @@ const HIGH_ORBIT_TRAIL_HOURS = 7 * 24;   // GEO satellites move slowly, so show 
 const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
 const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
 const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
-const GAP_SCREEN_SHARE = 0.35;       // at the closest approach, the gap fills 35% of the way from the middle to the edge
 const HIGH_ORBIT_KM = 20000;          // above this orbit radius (GEO is 42,164 km), Earth looks too small to stay in an angled view
 
 // A's own directions (each an arrow of length 1, in Earth-centred coordinates)
@@ -1251,45 +1250,32 @@ function relativeFraming(fitBoth = false) {
     const direction = relativeViewDirection();
     return { position: direction.multiplyScalar(RELATIVE_VIEW_DISTANCE), target: centreOfFrame };
   }
-  // Same angle as always; only the distance changes. Stand back just far enough that the gap
-  // between the two satellites, as seen from this angle, fills GAP_SCREEN_SHARE of the half-height.
+  // Same angle as always; only the distance changes, using the same rule as auto-zoom.
   const direction = relativeViewDirection();
-  const gap = dots[otherSlot()].position.clone();
-  const towardCamera = gap.dot(direction);                 // how much of the gap points at the camera
-  const gapOnScreen = gap.sub(direction.clone().multiplyScalar(towardCamera)).length();   // the part across the screen
-  const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  // Far enough that the gap fills its share of the picture, and always well behind both satellites
-  const distance = Math.max(Math.max(gapOnScreen, 0.0005) / (GAP_SCREEN_SHARE * halfHeightPerUnit), 3 * Math.abs(towardCamera));
-
+  const distance = zoomDistanceFor(dots[otherSlot()].position.length());   // the centre satellite is at (0, 0, 0)
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
-// Auto-zoom: in the relative view, keep the other satellite on screen as the gap grows and shrinks.
-// The camera stays still while it moves around the middle of the picture, and only eases out when
-// it nears the edge, or in when it gets very close to the middle.
+// Auto-zoom: in the relative view, the camera's distance follows the distance between the two
+// satellites, so the zoom always matches how close they are: twice as far apart = camera twice as
+// far back. The gap between them (seen side-on) reaches ZOOM_SHARE of the way to the screen edge.
 let autoZoom = true;              // turned off when the user zooms by hand; Home and View closest approach turn it back on
-let autoZooming = false;          // true while the camera is easing in or out
-const AUTO_ZOOM_OUT_AT = 0.7;     // zoom out once the other satellite is 70% of the way from the middle to the edge
-const AUTO_ZOOM_IN_AT = 0.12;     // zoom in once it is closer to the middle than 12%
+const ZOOM_SHARE = 0.6;           // seen side-on, the other satellite sits 60% of the way from the middle to the edge
+
+// How far back the camera stands for a given separation (in scene units: 1 = 1,000 km)
+function zoomDistanceFor(separation) {
+  const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  return THREE.MathUtils.clamp(separation / (ZOOM_SHARE * halfHeightPerUnit), controls.minDistance, controls.maxDistance);
+}
 
 function keepBothInFrame() {
   if (!autoZoom || cameraTween || view !== "relative" || !pair.A || !pair.B) return;
   const other = dots[otherSlot()];
   if (!other.visible) return;
-  // Where the other satellite is on screen: 0 = middle, 1 = edge, more than 1 = off screen
-  const onScreen = other.position.clone().project(camera);
-  const share = onScreen.z > 1 ? 2 : Math.max(Math.abs(onScreen.x), Math.abs(onScreen.y));   // z > 1 means behind the camera
-  if (share > AUTO_ZOOM_OUT_AT || share < AUTO_ZOOM_IN_AT) autoZooming = true;
-  if (!autoZooming) return;
-  // Aim for the same gap as View closest approach (GAP_SCREEN_SHARE), but never closer than 3 times
-  // the part of the gap that points at the camera, so the camera never flies past the satellite
+  const goal = zoomDistanceFor(other.position.length());   // the centre satellite is at (0, 0, 0)
   const offset = camera.position.clone().sub(controls.target);
   const distance = offset.length();
-  const towardCamera = Math.abs(other.position.clone().sub(controls.target).dot(offset.clone().normalize()));
-  const goal = THREE.MathUtils.clamp(Math.max(distance * Math.max(share, 0.01) / GAP_SCREEN_SHARE, 3 * towardCamera),
-    controls.minDistance, controls.maxDistance);
   offset.setLength(distance + (goal - distance) * 0.08);   // move 8% of the way each frame, so it eases
   camera.position.copy(controls.target).add(offset);
-  if (Math.abs(goal - distance) < 0.02 * distance) autoZooming = false;   // close enough: hold still again
 }
 
 // Work out the closest approach for the current window and show it in the panel.

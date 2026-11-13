@@ -193,6 +193,27 @@
     
   <!-- A few styles only this page needs -->
   <style>
+    /* Shared colours, from the lab's sbi-constellation-viz. Change a colour here and it changes everywhere on this page. */
+    :root {
+      --sbi-white: #ffffff;
+      --sbi-globe: #f7f7f7;                 /* Earth, and light button backgrounds */
+      --sbi-land: #e3e3e3;                  /* faint dividing lines */
+      --sbi-border: #d2d2d2;                /* borders and the empty part of the time bar */
+      --sbi-line: #a8a8a8;
+      --sbi-muted: #777777;                 /* small grey text */
+      --sbi-subtle: #555555;                /* buttons and secondary text */
+      --sbi-text: #292929;                  /* main text and dark buttons */
+      --sbi-gold: #b88b13;
+      --sbi-gold-light: #d6a516;            /* the played part of the time bar */
+      --sbi-surface: rgba(255, 255, 255, .94);   /* see-through panels */
+
+      /* style.css (shared with the original story page) uses these names: point them at the shared colours */
+      --ink: var(--sbi-text);
+      --muted: var(--sbi-muted);
+      --line: var(--sbi-border);
+      --panel: var(--sbi-surface);
+    }
+
     .pairPicker {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -227,7 +248,7 @@
       gap: 6px;
       margin-top: 10px;
       font-size: 12px;
-      color: #444;
+      color: var(--sbi-text);
       cursor: pointer;
     }
 
@@ -256,9 +277,9 @@
       min-width: 0;
       height: 32px;
       padding: 0 6px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--sbi-border);
       border-radius: 8px;
-      color: #444;
+      color: var(--sbi-text);
       font: inherit;
       font-size: 12px;
     }
@@ -283,7 +304,7 @@
       border-radius: 999px;
       background: transparent;
     }
-    .playbackDock .miniControl:hover { background: #f0f0f0; }
+    .playbackDock .miniControl:hover { background: var(--sbi-globe); }
     .playbackDock .miniControl:disabled { opacity: .3; background: transparent; cursor: default; }
     .playPauseMini { width: 30px; }
     .speedMini { width: 26px; }
@@ -295,14 +316,14 @@
       margin-left: 2px;
       border-top: 6px solid transparent;
       border-bottom: 6px solid transparent;
-      border-left: 10px solid #444;
+      border-left: 10px solid var(--sbi-text);
     }
     .pauseIcon {
       width: 9px;
       height: 12px;
       background:
-        linear-gradient(#444 0 0) left / 3px 100% no-repeat,
-        linear-gradient(#444 0 0) right / 3px 100% no-repeat;
+        linear-gradient(var(--sbi-text) 0 0) left / 3px 100% no-repeat,
+        linear-gradient(var(--sbi-text) 0 0) right / 3px 100% no-repeat;
     }
 
     /* Slower / faster: two small triangles side by side */
@@ -312,20 +333,20 @@
       border-top: 4px solid transparent;
       border-bottom: 4px solid transparent;
     }
-    .doubleTriangleLeft::before, .doubleTriangleLeft::after { border-right: 5px solid #555; }
-    .doubleTriangleRight::before, .doubleTriangleRight::after { border-left: 5px solid #555; }
+    .doubleTriangleLeft::before, .doubleTriangleLeft::after { border-right: 5px solid var(--sbi-subtle); }
+    .doubleTriangleRight::before, .doubleTriangleRight::after { border-left: 5px solid var(--sbi-subtle); }
 
     .speedLabel {
       min-width: 52px;
       font-size: 11px;
-      color: #555;
+      color: var(--sbi-subtle);
       text-align: center;
       font-variant-numeric: tabular-nums;
     }
 
     .identityCard {
       padding: 8px 0;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--sbi-land);
       font-size: 11px;
       line-height: 1.4;
     }
@@ -336,7 +357,7 @@
     }
 
     .identityMeta {
-      color: #777;
+      color: var(--sbi-muted);
       font-variant-numeric: tabular-nums;
     }
 
@@ -393,7 +414,7 @@
       min-width: 0;
       height: 32px;
       padding: 0 8px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--sbi-border);
       border-radius: 8px;
       font: inherit;
       font-size: 12px;
@@ -402,9 +423,9 @@
     .lookupRow button {
       height: 32px;
       padding: 0 12px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--sbi-border);
       border-radius: 8px;
-      background: #fff;
+      background: var(--sbi-white);
       font: inherit;
       font-size: 12px;
       font-weight: 650;
@@ -412,7 +433,7 @@
     }
 
     .lookupRow button:hover {
-      background: #f7f7f7;
+      background: var(--sbi-globe);
     }
 
     #lookupResult {
@@ -434,8 +455,8 @@
 
     /* .viewSwitch sets display:flex, which would override "hidden" */
     .cameraBtn.isOn {
-      color: #fff;
-      background: #555;
+      color: var(--sbi-white);
+      background: var(--sbi-subtle);
     }
 
     /* the axes button when the axes are showing */
@@ -486,7 +507,7 @@
     .closestApproach {
       margin-top: 12px;
       padding-top: 10px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--sbi-land);
     }
         #speedChart {
       width: 100%;
@@ -514,10 +535,10 @@
 
     .casePairs button {
       padding: 6px 8px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--sbi-border);
       border-radius: 8px;
-      background: #fff;
-      color: #444;
+      background: var(--sbi-white);
+      color: var(--sbi-text);
       font: inherit;
       font-size: 12px;
       text-align: left;
@@ -525,9 +546,9 @@
     }
 
     .casePairs button.activePair {
-      border-color: #333;
-      background: #333;
-      color: #fff;
+      border-color: var(--sbi-text);
+      background: var(--sbi-text);
+      color: var(--sbi-white);
     }
     /* The closest-approach note: a pop-up when the mouse is over the distance or the time */
     .closestApproach {
@@ -543,8 +564,8 @@
       z-index: 5;
       padding: 7px 9px;
       border-radius: 6px;
-      background: #333;
-      color: #fff;
+      background: var(--sbi-text);
+      color: var(--sbi-white);
       font-size: 11px;
       line-height: 1.4;
       pointer-events: none;
@@ -558,9 +579,9 @@
       width: 100%;
       height: 32px;
       margin-top: 4px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--sbi-border);
       border-radius: 8px;
-      background: #fff;
+      background: var(--sbi-white);
       font: inherit;
       font-size: 12px;
       font-weight: 650;
@@ -568,7 +589,7 @@
     }
 
     .caViewBtn:hover {
-      background: #f7f7f7;
+      background: var(--sbi-globe);
     }
 
     .sliderWrap {
@@ -584,7 +605,7 @@
 
     .sliderDate {
       font-size: 10px;
-      color: #777;
+      color: var(--sbi-muted);
       white-space: nowrap;
     }
 
@@ -594,8 +615,8 @@
       transform: translateX(-50%);
       padding: 3px 6px;
       border-radius: 5px;
-      background: #333;
-      color: #fff;
+      background: var(--sbi-text);
+      color: var(--sbi-white);
       font-size: 11px;
       white-space: pre;
       text-align: center;
@@ -613,7 +634,7 @@
       z-index: 2;
       margin: -16px -16px 8px;
       padding: 16px 16px 8px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid var(--sbi-border);
       background: rgba(255, 255, 255, .97);
     }
 
@@ -655,7 +676,7 @@
     .sliderNow {
       flex: 1;
       font-size: 11px;
-      color: #555;
+      color: var(--sbi-subtle);
       font-variant-numeric: tabular-nums;
     }
 
@@ -688,14 +709,14 @@
       border-radius: 999px;
       background:
         linear-gradient(to right, transparent var(--bandStart), rgba(0, 0, 0, .45) var(--bandStart) var(--bandEnd), transparent var(--bandEnd)),
-        linear-gradient(to right, #d6a516 var(--progress), #d8d8d8 var(--progress));
+        linear-gradient(to right, var(--sbi-gold-light) var(--progress), var(--sbi-border) var(--progress));
     }
     #timelineSlider::-moz-range-track {
       height: 3px;
       border-radius: 999px;
       background:
         linear-gradient(to right, transparent var(--bandStart), rgba(0, 0, 0, .45) var(--bandStart) var(--bandEnd), transparent var(--bandEnd)),
-        linear-gradient(to right, #d6a516 var(--progress), #d8d8d8 var(--progress));
+        linear-gradient(to right, var(--sbi-gold-light) var(--progress), var(--sbi-border) var(--progress));
     }
     /* The handle: a thin dark bar */
     #timelineSlider::-webkit-slider-thumb {
@@ -704,14 +725,14 @@
       height: 14px;
       margin-top: -5.5px;
       border-radius: 2px;
-      background: #111;
+      background: var(--sbi-text);
     }
     #timelineSlider::-moz-range-thumb {
       width: 3px;
       height: 14px;
       border: 0;
       border-radius: 2px;
-      background: #111;
+      background: var(--sbi-text);
     }
   </style>
 
