@@ -1213,6 +1213,7 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   // Jump the camera straight into place (as the original does) instead of gliding
   cameraTween = null;
   zoomGoal = null;
+  closeSince = null;
   const framing = relative ? relativeFraming(fitBoth) : fullEarthFraming();
   camera.position.copy(framing.position);
   controls.target.copy(framing.target);
@@ -1268,14 +1269,17 @@ function relativeFraming(fitBoth = false) {
   const distance = zoomDistanceFor(dots[otherSlot()].position.length(), OPEN_SHARE);   // the centre satellite is at (0, 0, 0)
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
-// Relative-view zoom: the camera stays at ONE zoom, set by View closest approach, so the gap you see
-// between the dots is the real gap (read it off the scale bar). It never zooms in by itself, and only
-// steps out if the other satellite is about to leave the screen.
+// Relative-view zoom: the camera holds one zoom, so the gap you see between the dots is the real gap
+// (read it off the scale bar). It changes zoom in steps only: out when the other satellite nears the
+// edge of the screen, and back in once the two have stayed close together for a couple of seconds.
 let autoZoom = true;              // turned off when the user zooms by hand; Home and View closest approach turn it back on
 let zoomGoal = null;              // the camera distance being eased towards during a step out, or null when settled
 const OPEN_SHARE = 0.35;          // View closest approach: the gap reaches 35% of the way from the middle to the screen edge
-const STEP_OUT_AT = 0.9;          // step out once the other satellite is 90% of the way to the edge...
-const STEP_OUT_SHARE = 0.5;       // ...to where it is 50% of the way (and at least 1.5 times as far back)
+const STEP_OUT_AT = 0.75;         // step out once the other satellite is 75% of the way to the edge
+const STEP_IN_AT = 0.2;           // step in once it has stayed closer to the middle than 20%...
+const STEP_IN_AFTER_MS = 2000;    // ...for 2 seconds
+const STEP_SHARE = 0.45;          // after a step, the other satellite sits about 45% of the way to the edge
+let closeSince = null;            // when the satellites became close on screen (for stepping in), or null
 
 // How far back the camera stands so that a point this far from the centre satellite (seen side-on)
 // reaches `share` of the way from the middle to the screen edge
@@ -1284,23 +1288,39 @@ function zoomDistanceFor(radius, share) {
   return THREE.MathUtils.clamp(radius / (share * halfHeightPerUnit), controls.minDistance, controls.maxDistance);
 }
 
-function keepBothInFrame() {
+// now: the time from the animation loop, in milliseconds
+function keepBothInFrame(now) {
   if (!autoZoom || cameraTween || view !== "relative" || !pair.A || !pair.B) return;
   const other = dots[otherSlot()];
   if (!other.visible) return;
   const offset = camera.position.clone().sub(controls.target);
   const distance = offset.length();
-  if (zoomGoal === null) {
-    // Where the other satellite is on screen: 0 = middle, 1 = edge, more than 1 = off screen
-    const onScreen = other.position.clone().project(camera);
-    const share = onScreen.z > 1 ? 2 : Math.max(Math.abs(onScreen.x), Math.abs(onScreen.y));   // z > 1 means behind the camera
-    if (share < STEP_OUT_AT) return;                       // still comfortably on screen: hold still
-    // Step out, at least 1.5 times as far, so steps are rare
-    zoomGoal = Math.max(zoomDistanceFor(other.position.length(), STEP_OUT_SHARE), 1.5 * distance);
+  // Where the other satellite is on screen: 0 = middle, 1 = edge, more than 1 = off screen
+  const onScreen = other.position.clone().project(camera);
+  const share = onScreen.z > 1 ? 2 : Math.max(Math.abs(onScreen.x), Math.abs(onScreen.y));   // z > 1 means behind the camera
+  const stepDistance = zoomDistanceFor(other.position.length(), STEP_SHARE);   // the zoom a step would go to
+  // Stepping in: bring the camera in until the gap on screen is STEP_SHARE, but stay at least twice as
+  // far back as the other satellite is in front of or behind the centre one, so the camera never passes it
+  const depth = Math.abs(other.position.clone().sub(controls.target).dot(offset.clone().normalize()));
+  const stepIn = Math.max(distance * share / STEP_SHARE, 2 * depth, controls.minDistance);
+
+  if (share > STEP_OUT_AT) {
+    // Nearing the edge: step out (at least 1.5 times as far, so steps are rare), and keep
+    // pushing the goal out if the satellite is still racing away
+    zoomGoal = Math.max(zoomGoal ?? 0, stepDistance, 1.5 * distance);
+    closeSince = null;
+  } else if (zoomGoal === null && share < STEP_IN_AT && stepIn < distance / 1.3) {
+    // Close together on screen for a while: step in until the gap on screen is STEP_SHARE again
+    closeSince ??= now;
+    if (now - closeSince > STEP_IN_AFTER_MS) { zoomGoal = stepIn; closeSince = null; }
+  } else {
+    closeSince = null;
   }
-  offset.setLength(distance + (zoomGoal - distance) * 0.08);   // move 8% of the way each frame, so it eases
+
+  if (zoomGoal === null) return;                           // settled: hold still
+  offset.setLength(distance + (zoomGoal - distance) * 0.12);   // move 12% of the way each frame, so it eases
   camera.position.copy(controls.target).add(offset);
-  if (Math.abs(zoomGoal - distance) < 0.01 * zoomGoal) zoomGoal = null;   // arrived: hold still again
+  if (Math.abs(zoomGoal - distance) < 0.01 * zoomGoal) zoomGoal = null;   // arrived
 }
 
 // The scale bar under the 3D view (relative view only): a round distance, about 50-100 pixels long,
@@ -1575,7 +1595,7 @@ function animate(now) {
   }
 
 lastFrameTime = now;
-  keepBothInFrame();
+  keepBothInFrame(now);
   controls.update();
   // Keep dashes the same size on screen at any zoom: DASH_SCREEN_SIZE of the screen height,
   // turned into scene units at the camera's distance (the same idea as the dot sizes in setView)
