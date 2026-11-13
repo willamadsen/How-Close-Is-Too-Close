@@ -1069,8 +1069,8 @@ let showAxes = false;                // direction axes on or off (the round butt
 let centre = "A";                    // which satellite sits at the centre of the relative view: "A" or "B"
 const otherSlot = () => centre === "A" ? "B" : "A";   // the satellite that moves around it
 const RELATIVE_SCALE_KM = 1000;      // in the relative view, 1 scene unit = 1,000 km (as in the original)
+const HIGH_ORBIT_TRAIL_HOURS = 7 * 24;   // GEO satellites move slowly, so show a whole week (seven orbits)
 const RELATIVE_TRAIL_HOURS = 4;      // how much of B's recent path to show
-const HIGH_ORBIT_TRAIL_HOURS = 24;   // GEO satellites move slowly, so show a whole day (one full orbit)
 const RELATIVE_TRAIL_POINTS = 240;   // one point per minute
 const RELATIVE_VIEW_DISTANCE = 0.5;  // normal camera distance in the relative view: 0.5 units = 500 km
 const GAP_SCREEN_SHARE = 0.35;       // at the closest approach, the gap fills 35% of the way from the middle to the edge
@@ -1159,8 +1159,9 @@ function drawRelative() {
   const flashing = performance.now() < Math.max(flashUntil.A, flashUntil.B);
   const faded = new THREE.Color(0xffffff), recent = new THREE.Color(0x777777).multiplyScalar(flashing ? TLE_FLASH_DARKEN : 1);
   const trailHours = relativeTrailHours();
-  for (let i = 0; i <= RELATIVE_TRAIL_POINTS; i++) {
-    const fraction = i / RELATIVE_TRAIL_POINTS;            // 0 = 4 hours ago, 1 = now
+  const trailPoints = Math.max(RELATIVE_TRAIL_POINTS, trailHours * 10);   // at least 10 points per hour, so long trails stay smooth
+  for (let i = 0; i <= trailPoints; i++) {
+    const fraction = i / trailPoints;                       // 0 = start of the trail, 1 = now
     const p = relativePointAt(currentMs - trailHours * 60 * MINUTE_MS * (1 - fraction), tleCentre, tleOther);
     if (!p) continue;
     points.push(p);
@@ -1194,7 +1195,7 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   $("earthView").classList.toggle("activeViewSwitch", !relative);
   $("relativeView").classList.toggle("activeViewSwitch", relative);
   $("viewNote").textContent = relative
-    ? `${slotName(centre)} is at the centre and Earth is drawn to scale below it. The fading line is ${slotName(otherSlot())}'s path over the last ${relativeTrailHours()} hours.`
+    ? `${slotName(centre)} is at the centre and Earth is drawn to scale below it. The fading line is ${slotName(otherSlot())}'s path over the last ${trailLengthText()}.`
     : "";
 
   if (pair.A || pair.B) updateScene();
@@ -1221,6 +1222,12 @@ function relativeTrailHours() {
   const state = stateAt(pair[centre], currentMs);
   const highOrbit = state && Math.hypot(...state.r) > HIGH_ORBIT_KM;
   return highOrbit ? HIGH_ORBIT_TRAIL_HOURS : RELATIVE_TRAIL_HOURS;
+}
+
+// The trail length as words: "4 hours", or "7 days" once it's 2 days or longer.
+function trailLengthText() {
+  const hours = relativeTrailHours();
+  return hours >= 48 ? `${hours / 24} days` : `${hours} hours`;
 }
 
 // Which way the camera looks from in the relative view. For high orbits like GEO: straight down
@@ -1255,6 +1262,35 @@ function relativeFraming(fitBoth = false) {
 
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
+// Auto-zoom: in the relative view, keep the other satellite on screen as the gap grows and shrinks.
+// The camera stays still while it moves around the middle of the picture, and only eases out when
+// it nears the edge, or in when it gets very close to the middle.
+let autoZoom = true;              // turned off when the user zooms by hand; Home and View closest approach turn it back on
+let autoZooming = false;          // true while the camera is easing in or out
+const AUTO_ZOOM_OUT_AT = 0.7;     // zoom out once the other satellite is 70% of the way from the middle to the edge
+const AUTO_ZOOM_IN_AT = 0.12;     // zoom in once it is closer to the middle than 12%
+
+function keepBothInFrame() {
+  if (!autoZoom || cameraTween || view !== "relative" || !pair.A || !pair.B) return;
+  const other = dots[otherSlot()];
+  if (!other.visible) return;
+  // Where the other satellite is on screen: 0 = middle, 1 = edge, more than 1 = off screen
+  const onScreen = other.position.clone().project(camera);
+  const share = onScreen.z > 1 ? 2 : Math.max(Math.abs(onScreen.x), Math.abs(onScreen.y));   // z > 1 means behind the camera
+  if (share > AUTO_ZOOM_OUT_AT || share < AUTO_ZOOM_IN_AT) autoZooming = true;
+  if (!autoZooming) return;
+  // Aim for the same gap as View closest approach (GAP_SCREEN_SHARE), but never closer than 3 times
+  // the part of the gap that points at the camera, so the camera never flies past the satellite
+  const offset = camera.position.clone().sub(controls.target);
+  const distance = offset.length();
+  const towardCamera = Math.abs(other.position.clone().sub(controls.target).dot(offset.clone().normalize()));
+  const goal = THREE.MathUtils.clamp(Math.max(distance * Math.max(share, 0.01) / GAP_SCREEN_SHARE, 3 * towardCamera),
+    controls.minDistance, controls.maxDistance);
+  offset.setLength(distance + (goal - distance) * 0.08);   // move 8% of the way each frame, so it eases
+  camera.position.copy(controls.target).add(offset);
+  if (Math.abs(goal - distance) < 0.02 * distance) autoZooming = false;   // close enough: hold still again
+}
+
 // Work out the closest approach for the current window and show it in the panel.
 function updateClosestApproach() {
   closest = pair.A && pair.B ? findClosestApproach() : null;
@@ -1392,6 +1428,7 @@ $("caViewBtn").addEventListener("click", () => {
   playing = false;                                       // pause, so it stays on that moment
   $("playBtn").innerHTML = '<span class="playIcon">▶</span>';
   currentMs = closest.ms;
+  autoZoom = true; 
   setView(view, centre, true);                     // true = zoom so both satellites are in the frame
 });
 
@@ -1427,9 +1464,12 @@ $("timelineSlider").addEventListener("pointermove", event => {
   showSliderTip(startMs + fraction * (endMs - startMs), event.offsetX);
 });
 $("timelineSlider").addEventListener("pointerleave", () => { $("sliderTip").hidden = true; });
-$("zoomInBtn").addEventListener("click", () => { cameraTween = null; camera.position.lerp(controls.target, 0.2); });
-$("zoomOutBtn").addEventListener("click", () => { cameraTween = null; camera.position.sub(controls.target).multiplyScalar(1.25).add(controls.target); });
-$("resetBtn").addEventListener("click", moveCameraSmoothly);
+$("zoomInBtn").addEventListener("click", () => { autoZoom = false; cameraTween =null; camera.position.lerp(controls.target, 0.2); });
+$("zoomOutBtn").addEventListener("click", () => { autoZoom = false; cameraTween = null; camera.position.sub(controls.target).multiplyScalar(1.25).add(controls.target); });
+$("resetBtn").addEventListener("click", () => { autoZoom = true; moveCameraSmoothly(); });
+// Zooming by hand (mouse wheel, or two fingers on a touch screen) pauses auto-zoom
+renderer.domElement.addEventListener("wheel", () => { autoZoom = false; });
+renderer.domElement.addEventListener("touchstart", event => { if (event.touches.length > 1) autoZoom = false; });
 
 // Keep the 3D view beside the panel and the right size when the window is resized.
 function updateRendererLayout() {
@@ -1484,6 +1524,7 @@ function animate(now) {
   }
 
 lastFrameTime = now;
+  keepBothInFrame();
   controls.update();
   // Keep dashes the same size on screen at any zoom: DASH_SCREEN_SIZE of the screen height,
   // turned into scene units at the camera's distance (the same idea as the dot sizes in setView)

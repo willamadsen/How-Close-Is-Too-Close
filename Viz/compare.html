@@ -117,8 +117,8 @@
       </div>
     </section>
 
-    <!-- Time window, time slider, play button and speed menu, pinned to the bottom of the panel -->
-    <section class="playbackSection">
+    <!-- Time window: which dates to model -->
+    <section class="panelSection">
       <!-- Time window: which dates to model. The Start/End pickers only show for "Custom dates". -->
       <div class="windowPicker">
         <label for="windowMode">Time window</label>
@@ -140,6 +140,11 @@
           <input id="endTime" type="datetime-local" step="60">
         </div>
       </div>
+          </section>
+  </aside>
+
+  <!-- Playback dock: its own card below the side panel, with the time bar, play button and speed -->
+  <div id="playbackDock" class="playbackDock">
       <div class="timeRow">
         <span id="sliderStart" class="sliderDate">—</span>
         <div class="sliderWrap">
@@ -158,8 +163,7 @@
           <option value="86400">1 day/s</option>
         </select>
       </div>
-    </section>
-  </aside>
+     </div>
 
   <div id="cameraControls">
     <!-- Link back to the Google Sheet of incidents -->
@@ -564,10 +568,32 @@
       background: rgba(255, 255, 255, .97);
     }
 
-    .playbackSection {
+        /* Playback dock: its own card under the side panel (style from the lab's sbi-constellation-viz) */
+    .playbackDock {
+      position: fixed;
+      z-index: 10;
+      left: 18px;
+      bottom: 18px;
+      width: 345px;
+      display: flex;
       flex-direction: column;
-      align-items: stretch;
       gap: 6px;
+      padding: 10px 16px 9px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .10);
+      backdrop-filter: blur(10px);
+    }
+
+    /* The side panel stops above the dock instead of running behind it */
+    #ui {
+      max-height: calc(100vh - 36px - 92px);
+    }
+
+    @media (max-width: 760px) {
+      .playbackDock { width: calc(100vw - 36px); }
+      #ui { max-height: calc(52vh - 92px); }
     }
 
     .timeRow,
@@ -596,10 +622,6 @@
       display: none;
     }
 
-    /* In the playback section, the section's own gap spaces the rows, so no extra space above */
-    .playbackSection .windowPicker {
-      margin-top: 0;
-    }
         /* The time bar, drawn by us instead of the browser so part of the track can be shaded.
        --bandStart and --bandEnd (set by compare.js) mark the reported period: 0% to 0% = no band. */
     #timelineSlider {
