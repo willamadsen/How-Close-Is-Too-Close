@@ -18,11 +18,17 @@
 
      <hr>
 
-  <!-- Which satellites are being modeled, and which TLE is in use right now -->
-  <section class="panelSection">
-    <div class="sectionTitle">Now modeling</div>
-    <div id="identity"></div>
-  </section>
+  <!-- Which satellites are being modeled, and which TLE is in use right now.
+       A fold-out card with one tile per satellite, in the style of the lab's sbi-constellation-viz. -->
+  <details id="nowModeling" class="panelSection nowModeling" open>
+    <summary>
+      <span class="nowHeading">Now modeling</span>
+      <span id="nowSummary" class="nowSummary"></span>
+      <span class="nowChevron" aria-hidden="true">‹</span>
+    </summary>
+    <div class="inputHeading">Satellites</div>
+    <div id="identity" class="satCardGrid"></div>
+  </details>
 
   <section class="panelSection"> 
       <div id="rangeNote" class="methodNote"></div>
@@ -344,21 +350,109 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .identityCard {
-      padding: 8px 0;
-      border-top: 1px solid var(--sbi-land);
-      font-size: 11px;
-      line-height: 1.4;
+    /* "Now modeling": a fold-out card with one tile per satellite (style from the lab's sbi-constellation-viz) */
+    .nowModeling {
+      padding: 11px 11px 12px;
+      border: 1px solid #dedede;
+      border-radius: 12px;
+      background: rgba(249, 249, 249, .74);
     }
-
-    .identityCard:first-child {
-      border-top: 0;
-      padding-top: 0;
+    .nowModeling > summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 22px;
+      cursor: pointer;
+      list-style: none;
     }
-
-    .identityMeta {
+    .nowModeling > summary::-webkit-details-marker { display: none; }
+    .nowHeading {
+      flex: 0 0 auto;
+      color: var(--sbi-text);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    /* When folded shut, the two names show next to the heading instead */
+    .nowSummary {
+      display: none;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: var(--sbi-muted);
+      font-size: 10.5px;
+    }
+    .nowModeling:not([open]) .nowSummary { display: block; }
+    /* The arrow: points down when shut, up when open */
+    .nowChevron {
+      margin-left: auto;
+      color: #999;
+      font-size: 17px;
+      line-height: 1;
+      transform: rotate(-90deg);
+      transition: transform .3s ease;
+    }
+    .nowModeling[open] .nowChevron { transform: rotate(90deg); }
+
+    .inputHeading {
+      margin-top: 10px;
+      color: #686e70;
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    /* Two satellite tiles side by side; warnings run across the full width underneath */
+    .satCardGrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .satCard {
+      padding: 8px 9px;
+      border: 1px solid #dedede;
+      border-radius: 11px;
+      background: #f8f8f8;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .025);
+      font-size: 10px;
+      line-height: 1.35;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    /* In the relative view, the satellite at the centre gets the gold "selected" border, and the
+       other tile can be clicked to put that satellite at the centre instead */
+    .satCard.isCentre {
+      border-color: #ab8e3c;
+      background: var(--sbi-white);
+      box-shadow: 0 0 0 1px rgba(171, 142, 60, .24), 0 4px 12px rgba(47, 57, 54, .08);
+    }
+    .satCard.canCentre:not(.isCentre) { cursor: pointer; }
+    .satCard.canCentre:not(.isCentre):hover {
+      transform: translateY(-2px);
+      border-color: #b9b9b9;
+      box-shadow: 0 5px 12px rgba(47, 47, 47, .08);
+    }
+    .satCardName {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 3px;
+      color: var(--sbi-text);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .satCardMeta {
+      color: var(--sbi-muted);
+      overflow-wrap: anywhere;
       font-variant-numeric: tabular-nums;
+    }
+    .satCardAge {
+      margin-top: 3px;
+      color: var(--sbi-subtle);
+    }
+    .satCardGrid .dataWarning {
+      grid-column: 1 / -1;
+      margin-top: 0;
+      font-size: 10px;
     }
 
     .tleAge.stale {

@@ -644,7 +644,8 @@ function ownerHtml(norad) {
 
 // The "Now modeling" panel: who each satellite is, and which TLE is in use.
 // This is also where the code CHECKS that the TLE really belongs to that satellite.
-function identityCard(slot) {
+// warnings: a list that any warnings about this satellite are added to (shown under both tiles)
+function identityCard(slot, warnings) {
   const norad = pair[slot], lib = library[norad], info = lib.info;
   const index = nearestTleIndex(lib, currentMs);
   const tle = lib.tles[index];
@@ -663,21 +664,30 @@ function identityCard(slot) {
   }
   if (ageClass === "stale") checks.push(`The nearest TLE is more than ${STALE_DAYS} days away, so this position is unreliable.`);
 
-  return `<div class="identityCard">
-    <div class="recordHead"><span class="sourceDot slot${slot}"></span><span>${info.name}</span></div>
-    <div class="identityMeta">NORAD ${norad} · ${info.intlDes ?? "intl. designator unknown"} · ${ownerHtml(norad)}</div>
-    <div class="identityMeta">TLE ${index + 1} of ${lib.tles.length} · epoch ${formatTime(lib.epochsMs[index])} · ${tle.source}</div>
-    <div class="identityMeta">Age: <span class="tleAge ${ageClass}">${describeAge(ageMs)}</span></div>
-    ${checks.map(c => `<div class="dataWarning">⚠ ${c}</div>`).join("")}
+  warnings.push(...checks.map(c => `<div class="dataWarning">⚠ ${info.name}: ${c}</div>`));
+
+  const relative = view === "relative";
+  const classes = ["satCard", relative ? "canCentre" : "", relative && centre === slot ? "isCentre" : ""].join(" ");
+  return `<div class="${classes}" data-slot="${slot}">
+    <div class="satCardName"><span class="sourceDot slot${slot}"></span><span>${info.name}</span></div>
+    <div class="satCardMeta">${ownerHtml(norad)}</div>
+    <div class="satCardMeta">NORAD ${norad}</div>
+    <div class="satCardMeta">${info.intlDes ?? "Intl. designator unknown"}</div>
+    <div class="satCardMeta">TLE ${index + 1} of ${lib.tles.length} · ${tle.source}</div>
+    <div class="satCardMeta">Epoch ${formatTime(lib.epochsMs[index])}</div>
+    <div class="satCardAge">Age: <span class="tleAge ${ageClass}">${describeAge(ageMs)}</span></div>
   </div>`;
 }
 
 function updateIdentity() {
   // Only rebuild the panel when something visible in it changed (TLE in use, or the age at 0.1-day steps).
-  const key = ["A", "B"].map(s => `${pair[s]}:${nearestTleIndex(library[pair[s]], currentMs)}`).join("|") + Math.round((currentMs / DAY_MS) * 10);
+  // (also the view and centre, which decide which tile has the gold border)
+  const key = ["A", "B"].map(s => `${pair[s]}:${nearestTleIndex(library[pair[s]], currentMs)}`).join("|") + Math.round((currentMs / DAY_MS) * 10) + view + centre;
   if (key === lastIdentityKey) return;
   lastIdentityKey = key;
-  $("identity").innerHTML = identityCard("A") + identityCard("B");
+  const warnings = [];
+  $("identity").innerHTML = identityCard("A", warnings) + identityCard("B", warnings) + warnings.join("");
+  $("nowSummary").textContent = `${slotName("A")} + ${slotName("B")}`;   // shown when the card is folded shut
 }
 
 
@@ -833,6 +843,7 @@ function clearScene() {
   $("timeDisplay").textContent = "—";                   // time
   $("sliderNow").textContent = "—";
   $("identity").innerHTML = "";                          // "Now modeling" panel
+  $("nowSummary").textContent = "";
   lastIdentityKey = "";                                  // make sure the panel rebuilds next time
     closest = null;
   $("closestApproach").hidden = true;
@@ -1401,6 +1412,11 @@ function switchCentre(slot) {
   camera.position.copy(controls.target).add(offset);
 }
 $("centreA").addEventListener("click", () => switchCentre("A"));
+// Clicking a satellite tile in "Now modeling" (relative view only) also puts that satellite at the centre
+$("identity").addEventListener("click", event => {
+  const card = event.target.closest(".satCard");
+  if (card && view === "relative" && card.dataset.slot !== centre) switchCentre(card.dataset.slot);
+});
 $("centreB").addEventListener("click", () => switchCentre("B"));
 // Show or hide the direction axes in the relative view
 $("axesBtn").addEventListener("click", () => {
