@@ -189,6 +189,12 @@
     </button>
 
   </div>
+  <!-- Scale bar under the 3D view, relative view only (compare.js updateScaleBar sets its length and text) -->
+  <div id="scaleBar" class="scaleBar" hidden>
+    <div id="scaleLine" class="scaleLine"></div>
+    <span id="scaleText"></span>
+  </div>
+
   <div id="brand"><img src="assets/ESPL.png" alt="Engineering Space Policy Laboratory"></div>
     
   <!-- A few styles only this page needs -->
@@ -733,6 +739,28 @@
       border: 0;
       border-radius: 2px;
       background: var(--sbi-text);
+    }
+
+    /* Scale bar under the 3D view: a bracket-shaped line with its distance underneath */
+    .scaleBar {
+      position: fixed;
+      bottom: 24px;
+      z-index: 5;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      color: var(--sbi-subtle);
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+    .scaleBar[hidden] { display: none; }
+    .scaleLine {
+      height: 6px;
+      border: 1.5px solid var(--sbi-text);
+      border-top: 0;
     }
   </style>
 

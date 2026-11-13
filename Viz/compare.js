@@ -1201,6 +1201,7 @@ function setView(next, nextCentre = centre, fitBoth = false) {
   if (pair.A || pair.B) updateScene();
   // Jump the camera straight into place (as the original does) instead of gliding
   cameraTween = null;
+  zoomGoal = null;
   const framing = relative ? relativeFraming(fitBoth) : fullEarthFraming();
   camera.position.copy(framing.position);
   controls.target.copy(framing.target);
@@ -1250,32 +1251,62 @@ function relativeFraming(fitBoth = false) {
     const direction = relativeViewDirection();
     return { position: direction.multiplyScalar(RELATIVE_VIEW_DISTANCE), target: centreOfFrame };
   }
-  // Same angle as always; only the distance changes, using the same rule as auto-zoom.
+  // Same angle as always; only the distance changes: far enough back that the gap between the
+  // satellites reaches OPEN_SHARE of the way to the screen edge.
   const direction = relativeViewDirection();
-  const distance = zoomDistanceFor(dots[otherSlot()].position.length());   // the centre satellite is at (0, 0, 0)
+  const distance = zoomDistanceFor(dots[otherSlot()].position.length(), OPEN_SHARE);   // the centre satellite is at (0, 0, 0)
   return { position: direction.multiplyScalar(distance), target: centreOfFrame };
 }
-// Auto-zoom: in the relative view, the camera's distance follows the distance between the two
-// satellites, so the zoom always matches how close they are: twice as far apart = camera twice as
-// far back. The gap between them (seen side-on) reaches ZOOM_SHARE of the way to the screen edge.
+// Relative-view zoom: the camera stays at ONE zoom, set by View closest approach, so the gap you see
+// between the dots is the real gap (read it off the scale bar). It never zooms in by itself, and only
+// steps out if the other satellite is about to leave the screen.
 let autoZoom = true;              // turned off when the user zooms by hand; Home and View closest approach turn it back on
-const ZOOM_SHARE = 0.6;           // seen side-on, the other satellite sits 60% of the way from the middle to the edge
+let zoomGoal = null;              // the camera distance being eased towards during a step out, or null when settled
+const OPEN_SHARE = 0.35;          // View closest approach: the gap reaches 35% of the way from the middle to the screen edge
+const STEP_OUT_AT = 0.9;          // step out once the other satellite is 90% of the way to the edge...
+const STEP_OUT_SHARE = 0.5;       // ...to where it is 50% of the way (and at least 1.5 times as far back)
 
-// How far back the camera stands for a given separation (in scene units: 1 = 1,000 km)
-function zoomDistanceFor(separation) {
+// How far back the camera stands so that a point this far from the centre satellite (seen side-on)
+// reaches `share` of the way from the middle to the screen edge
+function zoomDistanceFor(radius, share) {
   const halfHeightPerUnit = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  return THREE.MathUtils.clamp(separation / (ZOOM_SHARE * halfHeightPerUnit), controls.minDistance, controls.maxDistance);
+  return THREE.MathUtils.clamp(radius / (share * halfHeightPerUnit), controls.minDistance, controls.maxDistance);
 }
 
 function keepBothInFrame() {
   if (!autoZoom || cameraTween || view !== "relative" || !pair.A || !pair.B) return;
   const other = dots[otherSlot()];
   if (!other.visible) return;
-  const goal = zoomDistanceFor(other.position.length());   // the centre satellite is at (0, 0, 0)
   const offset = camera.position.clone().sub(controls.target);
   const distance = offset.length();
-  offset.setLength(distance + (goal - distance) * 0.08);   // move 8% of the way each frame, so it eases
+  if (zoomGoal === null) {
+    // Where the other satellite is on screen: 0 = middle, 1 = edge, more than 1 = off screen
+    const onScreen = other.position.clone().project(camera);
+    const share = onScreen.z > 1 ? 2 : Math.max(Math.abs(onScreen.x), Math.abs(onScreen.y));   // z > 1 means behind the camera
+    if (share < STEP_OUT_AT) return;                       // still comfortably on screen: hold still
+    // Step out, at least 1.5 times as far, so steps are rare
+    zoomGoal = Math.max(zoomDistanceFor(other.position.length(), STEP_OUT_SHARE), 1.5 * distance);
+  }
+  offset.setLength(distance + (zoomGoal - distance) * 0.08);   // move 8% of the way each frame, so it eases
   camera.position.copy(controls.target).add(offset);
+  if (Math.abs(zoomGoal - distance) < 0.01 * zoomGoal) zoomGoal = null;   // arrived: hold still again
+}
+
+// The scale bar under the 3D view (relative view only): a round distance, about 50-100 pixels long,
+// measured at the centre satellite's distance from the camera.
+function updateScaleBar() {
+  const bar = $("scaleBar");
+  bar.hidden = view !== "relative" || !pair.A || !pair.B;
+  if (bar.hidden) return;
+  const distance = camera.position.distanceTo(controls.target);
+  const screenHeightKm = 2 * distance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * RELATIVE_SCALE_KM;
+  const kmPerPixel = screenHeightKm / renderer.domElement.clientHeight;
+  const longest = kmPerPixel * 100;                        // the most a 100-pixel bar could show
+  const power = 10 ** Math.floor(Math.log10(longest));
+  let km = power;
+  for (const m of [2, 5]) if (m * power <= longest) km = m * power;   // the biggest of 1, 2 or 5 x power that fits
+  $("scaleLine").style.width = `${km / kmPerPixel}px`;
+  $("scaleText").textContent = km >= 1 ? `${km.toLocaleString()} km` : `${Math.round(km * 1000)} m`;
 }
 
 // Work out the closest approach for the current window and show it in the panel.
@@ -1480,6 +1511,7 @@ function updateRendererLayout() {
   const left = desktop ? Math.ceil($("ui").getBoundingClientRect().right + 18) : 0;
   const width = Math.max(1, innerWidth - left);
   renderer.domElement.style.left = `${left}px`;
+  $("scaleBar").style.left = `${left + width / 2}px`;   // the scale bar sits in the middle of the 3D view
   camera.aspect = width / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(width, innerHeight);
@@ -1538,6 +1570,7 @@ lastFrameTime = now;
     line.userData.dashed.gapSize = dash;
   }
 
+  updateScaleBar();
   renderer.render(scene, camera);
 }
 
