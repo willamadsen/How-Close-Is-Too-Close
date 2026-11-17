@@ -116,6 +116,21 @@ for event_id, cospar, start, end in downloads:
         f.write(tles)
     print("Saved " + filename)
 
+# Join every downloaded file into one text file: Data/all_tles.txt
+# (a satellite in more than one case only written once)
+all_file = Path(path).parent / "all_tles.txt"
+seen = set()
+with open(all_file, "w") as out:
+    for txt in sorted(Path(path).glob("*.txt")):
+        lines = [line.rstrip() for line in open(txt) if line.strip() != ""]
+        for i in range(0, len(lines) - 1, 2):
+            pair = lines[i] + "\n" + lines[i + 1] + "\n"
+            if lines[i].startswith("1 ") and lines[i + 1].startswith("2 ") and pair not in seen:
+                seen.add(pair)
+                out.write(pair)
+print("Saved " + str(len(seen)) + " TLEs to " + str(all_file))
+
+
 
 
 
